@@ -18,29 +18,28 @@ The architecture is defined by a few key concepts that represent the system's da
 
 These classes represent the "nouns" of the system—the data and state that the logic operates on.
 
-*   **`Device`**: The base representation for any single interface point with the hardware. Its primary responsibility is to hold a flexible `properties` dictionary. This allows it to represent any kind of hardware by storing arbitrary key-value pairs (e.g., `value`, `min_temp`, `max_speed`, `label`, `hwmon_path`).
-    *   **`Sensor`**: A subclass of `Device` used to signify that this device primarily reports values from the environment (e.g., a temperature sensor, a fan RPM sensor).
+*   **`Device`**: The base representation for any single interface point with the hardware. Its primary responsibility is to hold a flexible `properties` dictionary. This allows it to represent any kind of hardware by storing arbitrary key-value pairs (e.g., `value`, `min`, `max`, `label`, `hwmon_path`, `scale`, `ratio`, etc.).
+    *   **`Sensor`**: A subclass of `Device` used to signify that this device primarily reports values from the environment (e.g., a temperature sensor, a fan RPM sensor, a virtual composite sensor created from a statistical basis).
     *   **`Actuator`**: A subclass of `Device` used to signify that this device primarily performs an action in the environment (e.g., a fan PWM control, a pump speed control).
 
-*   **`State`**: A pure data object that represents a snapshot of various device properties at a single moment in time. It is implemented as a dictionary where keys are `Device` IDs and values are another dictionary of properties. A `State` is unopinionated about its meaning; its role (e.g., "actual", "desired") is defined by the context in which it is used by a `Process`.
+*   **`State`**: A pure data object that represents a snapshot of various device properties at a single moment in time. It is implemented as a set of Devices. A `State` is unopinionated about its meaning; its role (e.g., "actual", "desired") is defined by the context in which it is used by a `Process`.
     *   *Example*: `{ "cpu_temp": {"value": 72}, "case_fan": {"value": 1250} }`
 
 ### 2.2. Logical Processes
 
 These classes represent the "verbs" of the system—the logic that creates, transforms, and consumes `State` objects.
 
-*   **`Process`**: The abstract base class for any logical unit. Its core responsibility is to define a common interface for execution. Any `Process` can be included in a `System`'s pipeline.
+*   **`Process`**: The abstract base class for any computational unit. Its core responsibility is to define a common interface for execution. Any `Process` can be included in a `System`'s pipeline.  A Process can read one or more States and produce one State.
 
-*   **`Environment`**: A `Process` whose responsibility is to be the bridge between the `fanctl` system and a "world," which can be real or simulated.
-    *   It must contain a collection of `Device`s.
-    *   Its `read()` method is responsible for querying its world to produce an "actual" `State` object.
-    *   Its `apply()` method is responsible for taking a `State` object containing actuator settings and applying it to its world.
+*   **`Environment`**: A `Process` that can read Actuators and can read and write Sensors.  Most real Environments will only write sensors, but simulated environments may read actuators and modify sensors.
+    *   Its `read()` method is responsible for querying its underlying implementation to produce an "actual" `State` object.
+    *   Its `apply()` method is responsible for taking a `State` object containing actuator settings and applying it.
 
-*   **`Controller`**: A `Process` whose responsibility is to contain decision-making logic. It receives a `context` dictionary of named `State` objects and produces a new `State` object that represents its proposed settings for one or more `Actuator`s.
+*   **`Controller`**: A `Process` whose responsibility is to contain decision-making logic. It receives a `State` object and produces a new `State` object that represents its proposed settings for one or more `Actuator`s.
 
 *   **`System`**: The top-level orchestrator and the most important `Process`. Its responsibilities are:
-    *   To manage a single `Environment` and an ordered pipeline of one or more `Controller`s.
-    *   To manage the `context` dictionary of named `State`s.
+    *   To manage a single `Environment` and an ordered pipeline of one or more `Controller`s that follow it.
+    *   To manage the `context` dictionary of named `State`s, to allow the user to describe which state is currently desirable.
     *   To execute the pipeline in a well-defined order on each update cycle.
     *   To serve as a `Process` itself, allowing it to be composed within higher-level `System`s.
 
@@ -66,7 +65,7 @@ The `System` ensures predictable and safe behavior by managing a dictionary of n
 2.  **Read Actual State**: The `System` calls its `Environment`'s `read()` method. The returned `State` object is placed into the context with the reserved key `"actual"`.
 3.  **Load Profile States**: The `System` loads one or more `State`s from a `Profile` file (e.g., `performance_goals`, `silent_goals`) and adds them to the `context`.
 4.  **Execute Controller Pipeline**: The `System` iterates through its ordered list of `Controller`s. Each `Controller` receives the `context` and returns a `State` of proposed actuator settings. The output `State` from one `Controller` becomes an input to the next.
-5.  **Apply Final State**: The final `State` object from the last `Controller` in the pipeline contains the target settings for the actuators for the current cycle. The `System` compares this final `State` to the `actual_state`. If they differ, the `System` passes the final `State` to its `Environment`'s `apply()` method.
+5.  **Apply Final State**: The final `State` object from the last `Controller` in the pipeline contains the target settings for the actuators for the current cycle. The `System` compares this final `State` to the `actual`. If they differ, the `System` passes the final `State` to its `Environment`'s `apply()` method.
 6.  **Sleep**: The `System` process then sleeps for a configured interval before starting the next update cycle.
 
 ```mermaid
