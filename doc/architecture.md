@@ -10,32 +10,64 @@ The `fanctl` architecture is guided by three core principles:
 *   **Data-Driven Logic**: The architecture is built on a clean separation of pure data (`State`) and the logic that transforms it (`Process`).
 *   **Safety and Extensibility Through Composition**: Complex behaviors, including safety overrides and hierarchical control, are achieved by combining simple, composable building blocks in a well-defined pipeline.
 
-## 2. Key Abstractions
+## 2. Key Abstractions and Data Models
 
-The architecture is defined by a few key concepts:
+The architecture is defined by a few key concepts that represent the system's data and logical structure.
 
-*   **`Device`**: A class representing a single hardware interface point. It holds a flexible dictionary of properties (e.g., `value`, `min`, `max`, `label`) to accommodate a wide variety of hardware.
-    *   **`Sensor`**: A `Device` that primarily reports values from the environment.
-    *   **`Actuator`**: A `Device` that primarily performs an action in the environment.
+### 2.1. Data Models
 
-*   **`State`**: A pure data object, implemented as a dictionary, that represents a collection of device properties at a moment in time. A `State` is unopinionated about its meaning; it is simply data. Its role (e.g., "actual", "desired", "command") is defined by the context in which it is used.
-    *   Example: `{ "cpu_temp": {"value": 72}, "case_fan": {"value": 1250} }`
+These classes represent the "nouns" of the system—the data and state that the logic operates on.
 
-*   **`Process`**: The abstract base class for any logical unit. A `Process` is a self-contained component whose primary role is to transform `State` objects.
-    *   **`Environment`**: A `Process` that represents the state of the world. It reads the physical state of hardware (or a simulation) into an "actual" `State` object and applies a final "command" `State` to the hardware.
-    *   **`Controller`**: A `Process` that contains control logic. It receives a context of named `State` objects and produces a new `State` object representing proposed actuator commands.
+*   **`Device`**: The base representation for any single interface point with the hardware. Its primary responsibility is to hold a flexible `properties` dictionary. This allows it to represent any kind of hardware by storing arbitrary key-value pairs (e.g., `value`, `min_temp`, `max_speed`, `label`, `hwmon_path`).
+    *   **`Sensor`**: A subclass of `Device` used to signify that this device primarily reports values from the environment (e.g., a temperature sensor, a fan RPM sensor).
+    *   **`Actuator`**: A subclass of `Device` used to signify that this device primarily performs an action in the environment (e.g., a fan PWM control, a pump speed control).
 
-*   **`System`**: The top-level orchestrator. It manages the execution pipeline, including its `Environment`, an ordered list of `Controller`s, and the `State` context. A `System` is also a `Process`, which allows for powerful hierarchical composition.
+*   **`State`**: A pure data object that represents a snapshot of various device properties at a single moment in time. It is implemented as a dictionary where keys are `Device` IDs and values are another dictionary of properties. A `State` is unopinionated about its meaning; its role (e.g., "actual", "desired") is defined by the context in which it is used by a `Process`.
+    *   *Example*: `{ "cpu_temp": {"value": 72}, "case_fan": {"value": 1250} }`
 
-## 3. The Execution Pipeline and State Context
+### 2.2. Logical Processes
 
-The `System` ensures predictable and safe behavior by managing a dictionary of named `State` objects, called the `context`.
+These classes represent the "verbs" of the system—the logic that creates, transforms, and consumes `State` objects.
+
+*   **`Process`**: The abstract base class for any logical unit. Its core responsibility is to define a common interface for execution. Any `Process` can be included in a `System`'s pipeline.
+
+*   **`Environment`**: A `Process` whose responsibility is to be the bridge between the `fanctl` system and a "world," which can be real or simulated.
+    *   It must contain a collection of `Device`s.
+    *   Its `read()` method is responsible for querying its world to produce an "actual" `State` object.
+    *   Its `apply()` method is responsible for taking a `State` object containing actuator settings and applying it to its world.
+
+*   **`Controller`**: A `Process` whose responsibility is to contain decision-making logic. It receives a `context` dictionary of named `State` objects and produces a new `State` object that represents its proposed settings for one or more `Actuator`s.
+
+*   **`System`**: The top-level orchestrator and the most important `Process`. Its responsibilities are:
+    *   To manage a single `Environment` and an ordered pipeline of one or more `Controller`s.
+    *   To manage the `context` dictionary of named `State`s.
+    *   To execute the pipeline in a well-defined order on each update cycle.
+    *   To serve as a `Process` itself, allowing it to be composed within higher-level `System`s.
+
+## 3. Concrete Implementations
+
+The following are the key concrete implementations of the abstract `Process` classes.
+
+*   **`Hardware` (Environment)**: This class interfaces with the physical hardware of the machine, typically via the Linux `hwmon` filesystem. It discovers available sensors and actuators, populates its `Device` list, and implements the `read()` and `apply()` methods to interact with the real world. It may also create composite or virtual `Device`s (e.g., an average CPU temperature).
+
+*   **`Simulation` (Environment)**: This class creates a virtual world. It contains a set of virtual `Device`s and a mathematical model that defines their relationships. It is used for testing `Controller`s in a repeatable, deterministic way.
+
+*   **`SafetyController` (Controller)**: A simple, rule-based `Controller` that acts as a fail-safe. Its logic is to check for critical conditions in the `actual_state` (e.g., temperature exceeding a hard limit). If a condition is met, it returns a `State` that overrides all other `Controller`s and puts the system into a safe mode (e.g., all fans to 100%). It should always be the last `Controller` in the pipeline.
+
+*   **`PIDController` (Controller)**: A standard Proportional-Integral-Derivative controller. It will be configured to watch a specific `Sensor`'s value, compare it to a target value from a `desired_state`, and compute a new value for a specific `Actuator` to minimize the error. Multiple instances can be used in a pipeline to control different loops independently.
+
+*   **`LearningController` (Controller)**: The most complex `Controller`. It uses an Echo State Network to learn the relationships between all `Device`s in the system. It works to satisfy the goals in a `desired_state` while potentially optimizing for other factors (like minimizing noise or power) by observing the entire system `State`.
+
+## 4. The Execution Pipeline and State Context
+
+The `System` ensures predictable and safe behavior by managing a dictionary of named `State` objects, called the `context`. The main loop is as follows:
 
 1.  **Initialize Context**: The `System` initializes an empty `context` dictionary: `Dict[str, State]`.
-2.  **Read Actual State**: The `System` calls its `Environment`'s `read()` method. The returned `State` object is placed into the context with the reserved key `"actual"`. This `"actual"` state is the default and represents the current physical reality.
-3.  **Load Profile States**: The `System` loads one or more `State`s from a `Profile` file (e.g., `performance_goals`, `silent_goals`) and adds them to the `context` under their given names.
-4.  **Execute Controller Pipeline**: The `System` iterates through its ordered list of `Controller`s. Each `Controller` receives the *entire* `context` dictionary. It can use any `State`s it needs to perform its logic. The `State` returned by one `Controller` becomes the input for the next, typically representing a refined set of commands.
-5.  **Commit to Hardware**: The final `State` object from the last `Controller` in the pipeline is the "command" state. The `System` passes this `State` to its `Environment`'s `apply()` method to be written to the physical hardware.
+2.  **Read Actual State**: The `System` calls its `Environment`'s `read()` method. The returned `State` object is placed into the context with the reserved key `"actual"`.
+3.  **Load Profile States**: The `System` loads one or more `State`s from a `Profile` file (e.g., `performance_goals`, `silent_goals`) and adds them to the `context`.
+4.  **Execute Controller Pipeline**: The `System` iterates through its ordered list of `Controller`s. Each `Controller` receives the `context` and returns a `State` of proposed actuator settings. The output `State` from one `Controller` becomes an input to the next.
+5.  **Apply Final State**: The final `State` object from the last `Controller` in the pipeline contains the target settings for the actuators for the current cycle. The `System` compares this final `State` to the `actual_state`. If they differ, the `System` passes the final `State` to its `Environment`'s `apply()` method.
+6.  **Sleep**: The `System` process then sleeps for a configured interval before starting the next update cycle.
 
 ```mermaid
 sequenceDiagram
@@ -56,26 +88,26 @@ sequenceDiagram
 
         System->>Controller1: execute(context)
         activate Controller1
-        Controller1-->>System: returns 'command' State
+        Controller1-->>System: returns proposed_state_1
         deactivate Controller1
-        System->>System: context["cmd_from_c1"] = State
-
-        System->>Controller2: execute(context)
+        
+        System->>Controller2: execute(context, proposed_state_1)
         activate Controller2
-        Controller2-->>System: returns final 'command' State
+        Controller2-->>System: returns final_actuator_state
         deactivate Controller2
-        System->>System: final_commands = State
 
-        System->>Environment: apply(final_commands)
+        System->>Environment: apply(final_actuator_state)
         activate Environment
         Environment-->>System: Acknowledge
         deactivate Environment
+        
+        System->>System: sleep()
     end
 ```
 
-## 4. Class Hierarchy
+## 5. Class Hierarchy
 
-The following diagram illustrates the complete, integrated class hierarchy, showing the separation between the data model and the process model.
+The following diagram illustrates the complete, integrated class hierarchy.
 
 ```mermaid
 classDiagram
@@ -117,10 +149,10 @@ classDiagram
     Environment ..> State : "produces/consumes"
 ```
 
-## 5. Hierarchical Composition
+## 6. Hierarchical Composition
 
 Because a `System` is also a `Process`, it can be used as a component within a larger `System`. When a `System` is treated as a `Process`, its default representation is its own internal `"actual"` state. This allows for building complex control systems (e.g., for a data center) by composing simpler, self-contained systems that expose a high-level summary of their state.
 
-## 6. Testing Strategy
+## 7. Testing Strategy
 
 The architecture is inherently testable. A test `System` can be configured to use a `Simulation` as its `Environment`. This allows developers to craft specific, deterministic `State` objects to test `Controller` logic under a wide range of conditions without needing physical hardware.
