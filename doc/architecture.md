@@ -1,147 +1,68 @@
 # fanctl Architecture
 
-This document outlines the software architecture for `fanctl`, an adaptive thermal management system. It serves as the foundational blueprint for development.
+This document outlines the software architecture for `fanctl`, an adaptive thermal management system. It serves as the foundational blueprint for development, reflecting the latest design decisions.
 
 ## 1. Core Philosophy
 
 The `fanctl` architecture is guided by three core principles:
 
-*   **Zero-Configuration**: The system is designed to automatically discover and learn the thermal properties of the hardware it manages without requiring manual configuration of zones, sensors, or fans.
-*   **Learning-Based Control**: At its core, `fanctl` uses machine learning (specifically, Echo State Networks) to model the relationship between thermal sensors and cooling actuators, enabling intelligent and adaptive control.
-*   **Safety and Extensibility Through Composition**: The architecture is built on a small set of composable primitives. Complex behaviors, including safety overrides and hierarchical control, are achieved by combining these simple building blocks in a well-defined pipeline.
+*   **Zero-Configuration**: The system is designed to automatically discover and learn the thermal properties of the hardware it manages without requiring manual configuration.
+*   **Data-Driven Logic**: The architecture is built on a clean separation of pure data (`State`) and the logic that transforms it (`Process`).
+*   **Safety and Extensibility Through Composition**: Complex behaviors, including safety overrides and hierarchical control, are achieved by combining simple, composable building blocks in a well-defined pipeline.
 
 ## 2. Key Abstractions
 
-The architecture is defined by a few key abstract concepts.
+The architecture is defined by a few key concepts:
 
-*   **Device**: The most fundamental unit, representing a single interface point with the hardware. It is subclassed into:
-    *   **`Sensor`**: A read-only `Device` that reports a value from the environment (e.g., a temperature sensor).
-    *   **`Actuator`**: A write-only `Device` that performs an action in the environment (e.g., setting a fan's speed).
+*   **`Device`**: A class representing a single hardware interface point. It holds a flexible dictionary of properties (e.g., `value`, `min`, `max`, `label`) to accommodate a wide variety of hardware.
+    *   **`Sensor`**: A `Device` that primarily reports values from the environment.
+    *   **`Actuator`**: A `Device` that primarily performs an action in the environment.
 
-*   **Stage**: An abstract base class for any logical unit in the processing pipeline. A `Stage` is a self-contained component that performs a specific part of the overall logic. It is subclassed into:
-    *   **`Environment`**: A `Stage` that represents the state of the world. It contains all the `Sensor`s and `Actuator`s and defines how the world behaves.
-    *   **`Controller`**: A `Stage` that contains control logic. It reads from `Sensor`s and computes commands for `Actuator`s to achieve a desired outcome.
+*   **`State`**: A pure data object, implemented as a dictionary, that represents a collection of device properties at a moment in time. A `State` is unopinionated about its meaning; it is simply data. Its role (e.g., "actual", "desired", "command") is defined by the context in which it is used.
+    *   Example: `{ "cpu_temp": {"value": 72}, "case_fan": {"value": 1250} }`
 
-*   **System**: The top-level orchestrator that manages the execution pipeline. It contains one `Environment` and an ordered list of `Controller`s. Crucially, a `System` is also a `Stage`, which allows for powerful hierarchical composition.
+*   **`Process`**: The abstract base class for any logical unit. A `Process` is a self-contained component whose primary role is to transform `State` objects.
+    *   **`Environment`**: A `Process` that represents the state of the world. It reads the physical state of hardware (or a simulation) into an "actual" `State` object and applies a final "command" `State` to the hardware.
+    *   **`Controller`**: A `Process` that contains control logic. It receives a context of named `State` objects and produces a new `State` object representing proposed actuator commands.
 
-## 3. The Execution Pipeline
+*   **`System`**: The top-level orchestrator. It manages the execution pipeline, including its `Environment`, an ordered list of `Controller`s, and the `State` context. A `System` is also a `Process`, which allows for powerful hierarchical composition.
 
-The `System` ensures predictable and safe behavior by executing its `Stage`s in a strict, well-defined pipeline during each update cycle.
+## 3. The Execution Pipeline and State Context
 
-1.  **Read World State**: The `System` first reads the current values from all `Sensor`s within its `Environment`.
-2.  **Initialize Command State**: A temporary, internal "command state" is created to hold the desired values for all `Actuator`s. This state is mutable and will be modified by the controller pipeline.
-3.  **Execute Controller Pipeline**: The `System` iterates through its ordered list of `Controller`s. Each `Controller` receives the sensor readings and the current command state, and can propose new actuator commands, overwriting the values in the command state. This allows later stages to override earlier ones (e.g., a safety controller overriding a learning controller).
-4.  **Commit to Hardware**: Only after the entire controller pipeline has executed does the `System` take the final, sanitized command state and write the values to the actual `Actuator`s in the `Environment`.
+The `System` ensures predictable and safe behavior by managing a dictionary of named `State` objects, called the `context`.
 
-This sequence ensures that hardware is only touched once per cycle with the final, validated commands.
+1.  **Initialize Context**: The `System` initializes an empty `context` dictionary: `Dict[str, State]`.
+2.  **Read Actual State**: The `System` calls its `Environment`'s `read()` method. The returned `State` object is placed into the context with the reserved key `"actual"`. This `"actual"` state is the default and represents the current physical reality.
+3.  **Load Profile States**: The `System` loads one or more `State`s from a `Profile` file (e.g., `performance_goals`, `silent_goals`) and adds them to the `context` under their given names.
+4.  **Execute Controller Pipeline**: The `System` iterates through its ordered list of `Controller`s. Each `Controller` receives the *entire* `context` dictionary. It can use any `State`s it needs to perform its logic. The `State` returned by one `Controller` becomes the input for the next, typically representing a refined set of commands.
+5.  **Commit to Hardware**: The final `State` object from the last `Controller` in the pipeline is the "command" state. The `System` passes this `State` to its `Environment`'s `apply()` method to be written to the physical hardware.
 
 ```mermaid
-sequenceDiagram
-    participant System
-    participant Environment
-    participant Controller1 as "Controller 1 (e.g., Learning)"
-    participant Controller2 as "Controller 2 (e.g., Safety)"
-
-    loop Every Update Cycle
-        System->>Environment: Read all Sensor values
-        activate Environment
-        Environment-->>System: Return current Sensor states
-        deactivate Environment
-
-        System->>System: Create empty Actuator Command State
-
-        System->>Controller1: Execute(Sensor states)
-        activate Controller1
-        Controller1-->>System: Propose Actuator commands
-        deactivate Controller1
-        System->>System: Update Actuator Command State
-
-        System->>Controller2: Execute(Sensor states, Proposed commands)
-        activate Controller2
-        Controller2-->>System: Modify/Finalize Actuator commands
-        deactivate Controller2
-        System->>System: Update Actuator Command State
-
-        System->>Environment: Write final Actuator commands
-        activate Environment
-        Environment-->>System: Acknowledge
-        deactivate Environment
+graph TD
+    subgraph "Data (State objects in Context)"
+        P[Profile.yaml] --> DS(desired_state)
+        H[Hardware] --> AS(actual_state)
+        CS(command_state) --> H
     end
+
+    subgraph "Logic (Processes)"
+        C1(Controller 1)
+        C2(Controller 2)
+    end
+
+    AS -- "context['actual']" --> C1
+    DS -- "context['desired']" --> C1
+    C1 -- output --> C2
+    C2 -- output --> CS
+
+    classDef data fill:#cde4ff,stroke:#333
+    class P,DS,AS,CS data
 ```
 
-## 4. The Class Hierarchy
+## 4. Hierarchical Composition
 
-The following diagram illustrates the relationships between the core classes.
+Because a `System` is also a `Process`, it can be used as a component within a larger `System`. When a `System` is treated as a `Process`, its default representation is its own internal `"actual"` state. This allows for building complex control systems (e.g., for a data center) by composing simpler, self-contained systems that expose a high-level summary of their state.
 
-```mermaid
-classDiagram
-    direction BT
+## 5. Testing Strategy
 
-    class Device {
-        <<Base Class>>
-    }
-    class Sensor { }
-    class Actuator { }
-    Sensor --|> Device
-    Actuator --|> Device
-
-    class Stage {
-        <<Abstract Base Class>>
-        +execute()
-    }
-
-    class Controller {
-        <<Stage>>
-        # Defines control logic
-    }
-    Controller --|> Stage
-
-    class Environment {
-        <<Stage>>
-        # Represents the state of the world
-    }
-    Environment --|> Stage
-
-    class LearningController { }
-    LearningController --|> Controller
-    class SafetyController { }
-    SafetyController --|> Controller
-
-    class Simulation { }
-    Simulation --|> Environment
-    class Hardware { }
-    Hardware --|> Environment
-
-    class System {
-        # Orchestrates a pipeline of Controllers
-        # acting on an Environment.
-    }
-    System --|> Stage
-    System o-- "1..*" Controller
-    System o-- "1" Environment
-```
-
-### Concrete Implementations
-
-*   **`LearningController`**: A `Controller` that uses an Echo State Network to learn thermal relationships and predict optimal actuator commands.
-*   **`SafetyController`**: A simple, rule-based `Controller` that enforces hard limits (e.g., maximum temperature, minimum fan speed).
-*   **`Hardware`**: An `Environment` that interfaces directly with the physical hardware of the local machine (e.g., via the Linux `hwmon` interface).
-*   **`Simulation`**: An `Environment` that uses a mathematical model to simulate thermal dynamics, used primarily for testing and validation.
-
-## 5. Permissions and Data Flow
-
-To enforce the conceptual separation of concerns, the architecture does not rely on runtime permission checks. Instead, it uses **interface segregation** through proxy objects.
-
-When the `System` executes a `Stage`, it provides temporary, restricted views of the `Device`s that expose only the necessary functionality. For example, a `Controller` receives a read-only collection of sensors and a write-only proxy to the actuator command state. This is a Pythonic approach that makes it impossible for a `Controller` to, for instance, directly change a `Sensor`'s value.
-
-## 6. Hierarchical Composition
-
-The architecture's most powerful feature is its support for hierarchy. Because a `System` is itself a `Stage`, it can be used as a component within a larger `System`.
-
-This is achieved by using a `System` as part of the `Environment` of a higher-level `System`. For example, a `Rack_System` can have an `Environment` that contains multiple `PC_System` objects. The `Rack_System` does not interact with the individual sensors/actuators of the PCs; it only sees the virtual, aggregated `Sensor`s (e.g., `TotalPowerDraw`) and `Actuator`s (e.g., `CoolingMode`) that each `PC_System` chooses to expose.
-
-This allows for building complex control systems (e.g., for a data center) by composing simpler, self-contained systems.
-
-## 7. Testing Strategy
-
-The architecture is inherently testable. By swapping the `Environment` of a `System`, we can test `Controller` logic without needing physical hardware. A typical test `System` will use a `Simulation` as its `Environment`. This allows us to create specific, deterministic, and repeatable test scenarios to validate the behavior of controllers under a wide range of conditions, including edge cases and failure modes.
+The architecture is inherently testable. A test `System` can be configured to use a `Simulation` as its `Environment`. This allows developers to craft specific, deterministic `State` objects to test `Controller` logic under a wide range of conditions without needing physical hardware.
