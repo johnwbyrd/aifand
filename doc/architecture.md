@@ -79,44 +79,42 @@ The following diagram illustrates the complete, integrated class hierarchy, show
 
 ```mermaid
 classDiagram
+    class Device {
+        +properties: dict
+    }
+    class Sensor
+    class Actuator
+    class State {
+        <<Data Object>>
+        +device_properties: dict
+    }
+    class Process {
+        <<Abstract>>
+    }
+    class Controller
+    class Environment
+    class System
+    class LearningController
+    class SafetyController
+    class Hardware
+    class Simulation
 
-    subgraph DataModel [Data Model]
-        direction TB
-        Device {
-            +properties: dict
-        }
-        Sensor --|> Device
-        Actuator --|> Device
-        State {
-            <<Data Object>>
-            +device_properties: dict
-        }
-    end
-
-    subgraph ProcessModel [Process Model]
-        direction TB
-        Process {
-            <<Abstract>>
-        }
-        Controller --|> Process
-        Environment --|> Process
-        System --|> Process
-
-        LearningController --|> Controller
-        SafetyController --|> Controller
-
-        Hardware --|> Environment
-        Simulation --|> Environment
-    end
+    Sensor --|> Device
+    Actuator --|> Device
+    Controller --|> Process
+    Environment --|> Process
+    System --|> Process
+    LearningController --|> Controller
+    SafetyController --|> Controller
+    Hardware --|> Environment
+    Simulation --|> Environment
 
     System o-- "1" Environment
     System o-- "1..*" Controller
     System o-- "*" State : "manages in context"
-
+    Environment o-- "*" Device : "contains"
     Controller ..> State : "operates on"
     Environment ..> State : "produces/consumes"
-    Environment o-- "*" Device : "contains"
-
 ```
 
 ## 5. Hierarchical Composition
