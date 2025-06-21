@@ -6,9 +6,9 @@ This document outlines the software architecture for `fanctl`, an adaptive therm
 
 The `fanctl` architecture is guided by three core principles:
 
-*   **Zero-Configuration**: The system is designed to automatically discover and learn the thermal properties of the hardware it manages without requiring manual configuration.
-*   **Data-Driven Logic**: The architecture is built on a clean separation of pure data (`State`) and the logic that transforms it (`Process`).
-*   **Safety and Extensibility Through Composition**: Complex behaviors, including safety overrides and hierarchical control, are achieved by combining simple, composable building blocks in a well-defined pipeline.
+-   **Zero-Configuration**: The system is designed to automatically discover and learn the thermal properties of the hardware it manages without requiring manual configuration.
+-   **Data-Driven Logic**: The architecture is built on a clean separation of pure data (`State`) and the logic that transforms it (`Process`).
+-   **Safety and Extensibility Through Composition**: Complex behaviors, including safety overrides and hierarchical control, are achieved by combining simple, composable building blocks in a well-defined pipeline.
 
 ## 2. Key Abstractions and Data Models
 
@@ -18,44 +18,44 @@ The architecture is defined by a few key concepts that represent the system's da
 
 These classes represent the "nouns" of the system—the data and state that the logic operates on.
 
-*   **`Device`**: The base representation for any single interface point with the hardware. Its primary responsibility is to hold a flexible `properties` dictionary. This allows it to represent any kind of hardware by storing arbitrary key-value pairs (e.g., `value`, `min`, `max`, `label`, `hwmon_path`, `scale`, `ratio`, etc.).
-    *   **`Sensor`**: A subclass of `Device` used to signify that this device primarily reports values from the environment (e.g., a temperature sensor, a fan RPM sensor, a virtual composite sensor created from a statistical basis).
-    *   **`Actuator`**: A subclass of `Device` used to signify that this device primarily performs an action in the environment (e.g., a fan PWM control, a pump speed control).
+- **Device**: The base representation for any single interface point with the hardware. Its primary responsibility is to hold a flexible `properties` dictionary. This allows it to represent any kind of hardware by storing arbitrary key-value pairs (e.g., `value`, `min`, `max`, `label`, `hwmon_path`, `scale`, `ratio`, etc.).
+    -   **`Sensor`**: A subclass of `Device` used to signify that this device primarily reports values from the environment (e.g., a temperature sensor, a fan RPM sensor, a virtual composite sensor created from a statistical basis).
+    -   **`Actuator`**: A subclass of `Device` used to signify that this device primarily performs an action in the environment (e.g., a fan PWM control, a pump speed control).
 
-*   **`State`**: A pure data object that represents a snapshot of various device properties at a single moment in time. It is implemented as a set of Devices. A `State` is unopinionated about its meaning; its role (e.g., "actual", "desired") is defined by the context in which it is used by a `Process`.
-    *   *Example*: `{ "cpu_temp": {"value": 72}, "case_fan": {"value": 1250} }`
+- **State**: A pure data object that represents a snapshot of various device properties at a single moment in time. It is implemented as a set of Devices. A `State` is unopinionated about its meaning; its role (e.g., "actual", "desired") is defined by the context in which it is used by a `Process`.
+    -   *Example*: `{ "cpu_temp": {"value": 72}, "case_fan": {"value": 1250} }`
 
 ### 2.2. Logical Processes
 
 These classes represent the "verbs" of the system—the logic that creates, transforms, and consumes `State` objects.
 
-*   **`Process`**: The abstract base class for any computational unit. Its core responsibility is to define a common interface for execution. Any `Process` can be included in a `System`'s pipeline.  A Process can read one or more States and produce one State.
+- **Process**: The abstract base class for any computational unit. Its core responsibility is to define a common interface for execution. Any `Process` can be included in a `System`'s pipeline.  A Process can read one or more States and produce one State.
 
-*   **`Environment`**: A `Process` that can read Actuators and can read and write Sensors.  Most real Environments will only write sensors, but simulated environments may read actuators and modify sensors.
-    *   Its `read()` method is responsible for querying its underlying implementation to produce an "actual" `State` object.
-    *   Its `apply()` method is responsible for taking a `State` object containing actuator settings and applying it.
+- **Environment**: A `Process` that can read Actuators and can read and write Sensors.  Most real Environments will only write sensors, but simulated environments may read actuators and modify sensors.
+    -   Its `read()` method is responsible for querying its underlying implementation to produce an "actual" `State` object.
+    -   Its `apply()` method is responsible for taking a `State` object containing actuator settings and applying it.
 
-*   **`Controller`**: A `Process` whose responsibility is to contain decision-making logic. It receives a `State` object and produces a new `State` object that represents its proposed settings for one or more `Actuator`s.
+- **Controller**: A `Process` whose responsibility is to contain decision-making logic. It receives a `State` object and produces a new `State` object that represents its proposed settings for one or more `Actuator`s.
 
-*   **`System`**: The top-level orchestrator and the most important `Process`. Its responsibilities are:
-    *   To manage a single `Environment` and an ordered pipeline of one or more `Controller`s that follow it.
-    *   To manage the `context` dictionary of named `State`s, to allow the user to describe which state is currently desirable.
-    *   To execute the pipeline in a well-defined order on each update cycle.
-    *   To serve as a `Process` itself, allowing it to be composed within higher-level `System`s.
+- **System**: The top-level orchestrator and the most important `Process`. Its responsibilities are:
+    -   To manage a single `Environment` and an ordered pipeline of one or more `Controller`s that follow it.
+    -   To manage the `context` dictionary of named `State`s, to allow the user to describe which state is currently desirable.
+    -   To execute the pipeline in a well-defined order on each update cycle.
+    -   To serve as a `Process` itself, allowing it to be composed within higher-level `System`s.
 
 ## 3. Concrete Implementations
 
 The following are the key concrete implementations of the abstract `Process` classes.
 
-*   **`Hardware` (Environment)**: This class interfaces with the physical hardware of the machine, typically via the Linux `hwmon` filesystem. It discovers available sensors and actuators, populates its `Device` list, and implements the `read()` and `apply()` methods to interact with the real world. It may also create composite or virtual `Device`s (e.g., an average CPU temperature).
+-   **`Hardware` (Environment)**: This class interfaces with the physical hardware of the machine, typically via the Linux `hwmon` filesystem. It discovers available sensors and actuators, populates its `Device` list, and implements the `read()` and `apply()` methods to interact with the real world. It may also create composite or virtual `Device`s (e.g., an average CPU temperature).
 
-*   **`Simulation` (Environment)**: This class creates a virtual world. It contains a set of virtual `Device`s and a mathematical model that defines their relationships. It is used for testing `Controller`s in a repeatable, deterministic way.
+-   **`Simulation` (Environment)**: This class creates a virtual world. It contains a set of virtual `Device`s and a mathematical model that defines their relationships. It is used for testing `Controller`s in a repeatable, deterministic way.
 
-*   **`SafetyController` (Controller)**: A simple, rule-based `Controller` that acts as a fail-safe. Its logic is to check for critical conditions in the `actual_state` (e.g., temperature exceeding a hard limit). If a condition is met, it returns a `State` that overrides all other `Controller`s and puts the system into a safe mode (e.g., all fans to 100%). It should always be the last `Controller` in the pipeline.
+-   **`SafetyController` (Controller)**: A simple, rule-based `Controller` that acts as a fail-safe. Its logic is to check for critical conditions in the `actual_state` (e.g., temperature exceeding a hard limit). If a condition is met, it returns a `State` that overrides all other `Controller`s and puts the system into a safe mode (e.g., all fans to 100%). It should always be the last `Controller` in the pipeline.
 
-*   **`PIDController` (Controller)**: A standard Proportional-Integral-Derivative controller. It will be configured to watch a specific `Sensor`'s value, compare it to a target value from a `desired_state`, and compute a new value for a specific `Actuator` to minimize the error. Multiple instances can be used in a pipeline to control different loops independently.
+-   **`PIDController` (Controller)**: A standard Proportional-Integral-Derivative controller. It will be configured to watch a specific `Sensor`'s value, compare it to a target value from a `desired_state`, and compute a new value for a specific `Actuator` to minimize the error. Multiple instances can be used in a pipeline to control different loops independently.
 
-*   **`LearningController` (Controller)**: The most complex `Controller`. It uses an Echo State Network to learn the relationships between all `Device`s in the system. It works to satisfy the goals in a `desired_state` while potentially optimizing for other factors (like minimizing noise or power) by observing the entire system `State`.
+-   **`LearningController` (Controller)**: The most complex `Controller`. It uses an Echo State Network to learn the relationships between all `Device`s in the system. It works to satisfy the goals in a `desired_state` while potentially optimizing for other factors (like minimizing noise or power) by observing the entire system `State`.
 
 ## 4. The Execution Pipeline and State Context
 

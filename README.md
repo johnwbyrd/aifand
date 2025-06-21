@@ -8,11 +8,11 @@
 
 ### Key Goals:
 
-*   **Automatic Discovery**: Eliminate the need for users to manually configure thermal zones, map sensors to fans, or define control curves. `fanctl` will discover the system's cooling devices and temperature sensors automatically.
-*   **Intelligent Control**: Utilize machine learning techniques (specifically, Echo State Networks) to learn the unique thermal relationships within a system. This allows `fanctl` to predict how changes in fan speed will affect temperatures, leading to more efficient and stable cooling.
-*   **Safety and Reliability**: Implement a robust, layered safety model to prevent overheating and ensure that hardware is always protected, even while the system is learning or encountering unexpected conditions.
-*   **Extensibility**: Design a modular, composable architecture that allows developers to easily extend the system with new controllers, support new hardware, or even create complex, hierarchical control systems for multi-machine environments like data centers.
-*   **Efficiency**: Optimize cooling to be "just right," avoiding the common issue of fans running at maximum speed unnecessarily, thereby reducing noise and power consumption.
+-   **Automatic Discovery**: Eliminate the need for users to manually configure thermal zones, map sensors to fans, or define control curves. `fanctl` will discover the system's cooling devices and temperature sensors automatically.
+-   **Intelligent Control**: Utilize machine learning techniques (specifically, Echo State Networks) to learn the unique thermal relationships within a system. This allows `fanctl` to predict how changes in fan speed will affect temperatures, leading to more efficient and stable cooling.
+-   **Safety and Reliability**: Implement a robust, layered safety model to prevent overheating and ensure that hardware is always protected, even while the system is learning or encountering unexpected conditions.
+-   **Extensibility**: Design a modular, composable architecture that allows developers to easily extend the system with new controllers, support new hardware, or even create complex, hierarchical control systems for multi-machine environments like data centers.
+-   **Efficiency**: Optimize cooling to be "just right," avoiding the common issue of fans running at maximum speed unnecessarily, thereby reducing noise and power consumption.
 
 ## Current Status
 
