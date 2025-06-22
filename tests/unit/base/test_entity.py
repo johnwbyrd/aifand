@@ -56,7 +56,7 @@ class TestEntity:
         assert entity_dict["uuid"] == sample_uuid
 
         # Test JSON-mode serialization (converts UUID to string)
-        entity_dict_json = entity.model_dump(mode='json')
+        entity_dict_json = entity.model_dump(mode="json")
         assert entity_dict_json["uuid"] == str(sample_uuid)
         assert entity_dict["name"] == sample_name
 
@@ -100,12 +100,7 @@ class TestEntity:
         assert "Entity(" in repr_str
 
         # Test representation with arbitrary fields
-        entity_with_extras = Entity(
-            uuid=sample_uuid,
-            name=sample_name,
-            temperature=72.5,
-            status="active"
-        )
+        entity_with_extras = Entity(uuid=sample_uuid, name=sample_name, temperature=72.5, status="active")
 
         repr_with_extras = repr(entity_with_extras)
         assert sample_name in repr_with_extras
@@ -123,7 +118,7 @@ class TestEntity:
             status="active",
             metadata={"sensor_type": "thermal", "location": "cpu"},
             count=42,
-            enabled=True
+            enabled=True,
         )
 
         # Verify all fields are accessible
@@ -144,14 +139,14 @@ class TestEntity:
             "custom_string": "test_value",
             "custom_list": [1, 2, 3],
             "custom_dict": {"nested": "value"},
-            "custom_bool": False
+            "custom_bool": False,
         }
 
         # Create entity with arbitrary fields
         entity = Entity(**original_data)
 
         # Test serialization preserves all fields
-        serialized = entity.model_dump(mode='json')
+        serialized = entity.model_dump(mode="json")
         assert serialized["uuid"] == str(sample_uuid)
         assert serialized["name"] == sample_name
         assert serialized["custom_float"] == 3.14159
@@ -186,11 +181,7 @@ class TestEntity:
 
     def test_entity_arbitrary_fields_access(self, sample_uuid, sample_name):
         """Test accessing arbitrary fields through attribute and dict-like access."""
-        entity = Entity(
-            uuid=sample_uuid,
-            name=sample_name,
-            dynamic_field="dynamic_value"
-        )
+        entity = Entity(uuid=sample_uuid, name=sample_name, dynamic_field="dynamic_value")
 
         # Test attribute access
         assert entity.dynamic_field == "dynamic_value"
@@ -201,15 +192,13 @@ class TestEntity:
 
     def test_entity_inheritance_with_arbitrary_fields(self, sample_uuid, sample_name):
         """Test that inheritance works with arbitrary fields."""
+
         class TestSubEntity(Entity):
             typed_field: str = "default"
 
         # Create with both typed and arbitrary fields
         sub_entity = TestSubEntity(
-            uuid=sample_uuid,
-            name=sample_name,
-            typed_field="typed_value",
-            arbitrary_field="arbitrary_value"
+            uuid=sample_uuid, name=sample_name, typed_field="typed_value", arbitrary_field="arbitrary_value"
         )
 
         assert isinstance(sub_entity, Entity)

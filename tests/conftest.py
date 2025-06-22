@@ -19,13 +19,7 @@ def sample_name() -> str:
 @pytest.fixture
 def sample_device_properties() -> Dict[str, Any]:
     """Provides sample device properties for testing."""
-    return {
-        "value": 42.5,
-        "min": 0.0,
-        "max": 100.0,
-        "label": "Test Sensor",
-        "unit": "°C"
-    }
+    return {"value": 42.5, "min": 0.0, "max": 100.0, "label": "Test Sensor", "unit": "°C"}
 
 
 @pytest.fixture
