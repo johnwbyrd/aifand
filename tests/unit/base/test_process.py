@@ -114,20 +114,176 @@ class TestProcessBase:
         assert "SimpleProcess" in logger.name
         assert "test_process" in logger.name
 
-    def test_add_child_method(self):
-        """Test adding children with add_child method."""
+    def test_append_child_method(self):
+        """Test adding children with append_child method."""
         parent = SimpleProcess(name="parent")
         child = SimpleProcess(name="child")
 
-        # add_child returns new instance (immutable)
-        new_parent = parent.add_child(child)
+        # append_child modifies in place (mutable)
+        parent.append_child(child)
 
-        # Original unchanged
+        # Parent now has child
+        assert len(parent.children) == 1
+        assert parent.children[0].name == "child"
+
+
+class TestProcessManipulation:
+    """Test process pipeline manipulation methods."""
+
+    def test_insert_before_existing_process(self):
+        """Test inserting a process before an existing one."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        second = SimpleProcess(name="second")
+        new_process = SimpleProcess(name="new")
+
+        parent.append_child(first)
+        parent.append_child(second)
+
+        # Insert before second
+        parent.insert_before("second", new_process)
+
+        assert len(parent.children) == 3
+        assert parent.children[0].name == "first"
+        assert parent.children[1].name == "new"
+        assert parent.children[2].name == "second"
+
+    def test_insert_before_first_process(self):
+        """Test inserting before the first process."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        new_process = SimpleProcess(name="new")
+
+        parent.append_child(first)
+        parent.insert_before("first", new_process)
+
+        assert len(parent.children) == 2
+        assert parent.children[0].name == "new"
+        assert parent.children[1].name == "first"
+
+    def test_insert_before_nonexistent_process(self):
+        """Test inserting before a process that doesn't exist."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        new_process = SimpleProcess(name="new")
+
+        parent.append_child(first)
+
+        with pytest.raises(ValueError, match="Process 'nonexistent' not found in pipeline"):
+            parent.insert_before("nonexistent", new_process)
+
+    def test_insert_after_existing_process(self):
+        """Test inserting a process after an existing one."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        second = SimpleProcess(name="second")
+        new_process = SimpleProcess(name="new")
+
+        parent.append_child(first)
+        parent.append_child(second)
+
+        # Insert after first
+        parent.insert_after("first", new_process)
+
+        assert len(parent.children) == 3
+        assert parent.children[0].name == "first"
+        assert parent.children[1].name == "new"
+        assert parent.children[2].name == "second"
+
+    def test_insert_after_last_process(self):
+        """Test inserting after the last process."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        new_process = SimpleProcess(name="new")
+
+        parent.append_child(first)
+        parent.insert_after("first", new_process)
+
+        assert len(parent.children) == 2
+        assert parent.children[0].name == "first"
+        assert parent.children[1].name == "new"
+
+    def test_insert_after_nonexistent_process(self):
+        """Test inserting after a process that doesn't exist."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        new_process = SimpleProcess(name="new")
+
+        parent.append_child(first)
+
+        with pytest.raises(ValueError, match="Process 'nonexistent' not found in pipeline"):
+            parent.insert_after("nonexistent", new_process)
+
+    def test_remove_child_existing_process(self):
+        """Test removing an existing child process."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        second = SimpleProcess(name="second")
+        third = SimpleProcess(name="third")
+
+        parent.append_child(first)
+        parent.append_child(second)
+        parent.append_child(third)
+
+        # Remove middle process
+        result = parent.remove_child("second")
+
+        assert result is True
+        assert len(parent.children) == 2
+        assert parent.children[0].name == "first"
+        assert parent.children[1].name == "third"
+
+    def test_remove_child_first_process(self):
+        """Test removing the first child process."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        second = SimpleProcess(name="second")
+
+        parent.append_child(first)
+        parent.append_child(second)
+
+        result = parent.remove_child("first")
+
+        assert result is True
+        assert len(parent.children) == 1
+        assert parent.children[0].name == "second"
+
+    def test_remove_child_last_process(self):
+        """Test removing the last child process."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+        second = SimpleProcess(name="second")
+
+        parent.append_child(first)
+        parent.append_child(second)
+
+        result = parent.remove_child("second")
+
+        assert result is True
+        assert len(parent.children) == 1
+        assert parent.children[0].name == "first"
+
+    def test_remove_child_nonexistent_process(self):
+        """Test removing a process that doesn't exist."""
+        parent = SimpleProcess(name="parent")
+        first = SimpleProcess(name="first")
+
+        parent.append_child(first)
+
+        result = parent.remove_child("nonexistent")
+
+        assert result is False
+        assert len(parent.children) == 1
+        assert parent.children[0].name == "first"
+
+    def test_remove_child_empty_pipeline(self):
+        """Test removing from an empty pipeline."""
+        parent = SimpleProcess(name="parent")
+
+        result = parent.remove_child("nonexistent")
+
+        assert result is False
         assert len(parent.children) == 0
-
-        # New instance has child
-        assert len(new_parent.children) == 1
-        assert new_parent.children[0].name == "child"
 
 
 class TestProcessExecution:

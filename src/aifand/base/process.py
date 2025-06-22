@@ -5,7 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from .entity import Entity
 from .state import State
@@ -23,10 +23,13 @@ class Process(Entity, ABC):
     - Stateless: No data persists between execute() calls
     - Pipeline: Child processes execute serially with state passthrough
     - Error resilient: Exceptions are caught, logged, and execution continues
-    - Immutable: Input states are never modified (deep copy used)
+    - Immutable input states: Input states are never modified (deep copy used)
+    - Mutable structure: Process structure can be modified for construction
 
     Subclasses must implement _execute_impl() to define their specific logic.
     """
+
+    model_config = ConfigDict(extra="allow", frozen=False)
 
     children: List["Process"] = Field(
         default_factory=list, description="Ordered list of child processes for pipeline execution"
@@ -107,26 +110,64 @@ class Process(Entity, ABC):
         """
         pass
 
-    def add_child(self, child: "Process") -> "Process":
-        """Return a new Process with the given child added to the pipeline.
-
-        Since Process is immutable, this returns a new instance rather than
-        modifying the current one.
+    def append_child(self, child: "Process") -> None:
+        """Append a child process to the end of the execution pipeline.
 
         Args:
-            child: Process to add to the end of the pipeline
-
-        Returns:
-            New Process instance with the child added
+            child: Process to append to the end of the pipeline
 
         """
-        new_children = list(self.children) + [child]
-        return self.__class__(
-            uuid=self.uuid,
-            name=self.name,
-            children=new_children,
-            **{k: v for k, v in self.model_dump().items() if k not in ["uuid", "name", "children"]},
-        )
+        self.children.append(child)
+
+    def insert_before(self, target_name: str, process: "Process") -> None:
+        """Insert a process before the named target process.
+
+        Args:
+            target_name: Name of the target process to insert before
+            process: Process to insert
+
+        Raises:
+            ValueError: If target_name is not found in the pipeline
+
+        """
+        for i, child in enumerate(self.children):
+            if child.name == target_name:
+                self.children.insert(i, process)
+                return
+        raise ValueError(f"Process '{target_name}' not found in pipeline")
+
+    def insert_after(self, target_name: str, process: "Process") -> None:
+        """Insert a process after the named target process.
+
+        Args:
+            target_name: Name of the target process to insert after
+            process: Process to insert
+
+        Raises:
+            ValueError: If target_name is not found in the pipeline
+
+        """
+        for i, child in enumerate(self.children):
+            if child.name == target_name:
+                self.children.insert(i + 1, process)
+                return
+        raise ValueError(f"Process '{target_name}' not found in pipeline")
+
+    def remove_child(self, name: str) -> bool:
+        """Remove a child process by name.
+
+        Args:
+            name: Name of the process to remove
+
+        Returns:
+            True if the process was found and removed, False otherwise
+
+        """
+        for i, child in enumerate(self.children):
+            if child.name == name:
+                del self.children[i]
+                return True
+        return False
 
     def get_logger(self) -> logging.Logger:
         """Get the logger instance for this process."""
