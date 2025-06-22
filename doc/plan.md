@@ -8,27 +8,41 @@ The plan implements the system as both a standalone daemon and as a Python packa
 
 ---
 
-## Phase 2: Core Abstractions Implementation
+## Phase 2: Core Abstractions Implementation ✅ COMPLETED
 
 ### Objective
 Implement the core data structures and abstract base classes in src/aifand/base/.
 
-### Tasks
-1. **Implement `Device` Classes** (src/aifand/base/device.py):
-   - Create the base `Device` class with flexible `properties` dictionary
-   - Create the `Sensor` and `Actuator` subclasses with appropriate specializations
-   - Establish standard property naming conventions for thermal management
-   - Implement device discovery and instantiation mechanisms
+### Status: COMPLETED
+All core abstractions implemented and fully tested (60 passing tests).
 
-2. **Implement `State` Type** (src/aifand/base/state.py):
-   - Define `State` as a data structure for device property collections
-   - Implement state serialization, deserialization, and validation
-   - Create state manipulation and query utilities
+### Completed Tasks
+1. **Implemented `Device` Classes** (src/aifand/base/device.py):
+   ✅ Created the base `Device` class with flexible `properties` dictionary
+   ✅ Created the `Sensor` and `Actuator` subclasses 
+   ✅ Established standard property naming conventions for thermal management
+   ✅ Full serialization/deserialization support with pydantic
+   ⏸️ Device discovery mechanisms deferred to concrete Environment implementations
 
-3. **Implement `Process` Abstract Base Class** (src/aifand/base/process.py):
-   - Create the `Process` ABC with abstract `execute` method
-   - Define the `Environment` and `Controller` abstract subclasses
-   - Implement process pipeline and execution framework
+2. **Implemented `State` Type** (src/aifand/base/state.py):
+   ✅ Defined `State` as immutable collection of devices indexed by name
+   ✅ Implemented state serialization, deserialization, and validation
+   ✅ Created state manipulation utilities (with_device, without_device, etc.)
+   ✅ Helper methods for device access and query
+
+3. **Implemented `Process` Abstract Base Class** (src/aifand/base/process.py):
+   ✅ Created the `Process` ABC with abstract `_execute_impl` method
+   ✅ Defined the `Environment` and `Controller` abstract subclasses
+   ✅ Implemented process pipeline with serial execution
+   ✅ Added error resilience (catch, log, continue with passthrough)
+   ✅ Deep copy input states to prevent modification
+   ✅ Per-process logging with hierarchical logger names
+
+### Key Implementation Details
+- **Error handling**: Never abort pipelines; failed processes log errors and continue
+- **Performance**: Deep copying acceptable for expected device counts (5-15 sensors, 3-8 actuators)
+- **State management**: Immutable with copy-on-write semantics
+- **Logging**: Each process gets `module.Class.name` logger hierarchy
 
 ---
 
@@ -37,11 +51,15 @@ Implement the core data structures and abstract base classes in src/aifand/base/
 ### Objective
 Create a minimal, working `System` for integration testing. Implement multiple simulation environments to test controller behavior under various conditions.
 
-### Tasks
+### Status: READY TO START
+Phase 2 foundation complete. System will handle state persistence between executions (unlike stateless Processes).
+
+### Updated Tasks
 1. **Implement `System` Process** (src/aifand/base/system.py):
-   - Create `System` class with state management and controller pipeline
-   - Implement main execution loop with error handling
-   - Add support for named states and context management
+   - Create `System` class extending Process with state persistence capability
+   - Implement main execution loop with ~100ms timing (loose real-time)
+   - Add support for named states context management ("actual", "desired", etc.)
+   - Handle configuration loading and process instantiation
 
 2. **Implement Simulation Environments** (src/aifand/environments/simulation.py):
    - **LinearThermal**: Simple linear heat transfer model (`temp_change = (heat_input - heat_dissipation) / thermal_mass`)
@@ -283,7 +301,7 @@ Add extended features, documentation, and support for complex deployment scenari
 ## Cross-Cutting Concerns
 
 ### Testing Strategy
-- **Unit Tests** (Phase 2): Core data models and individual components with pytest
+- **Unit Tests** (Phase 2): ✅ COMPLETED - Core data models and individual components with pytest (60 tests passing)
 - **Integration Tests** (Phase 3): System pipeline and controller interactions  
 - **Simulation Tests** (Phase 4): Controller behavior under reasonable and perverse thermal conditions
 - **Protocol Tests** (Phase 5): Multi-protocol serialization and network communication
@@ -311,3 +329,41 @@ Each phase includes completion criteria:
 - **Documentation Requirements**: User and developer documentation
 
 The plan provides for aifand deployment as both a standalone thermal management service and as a library component for integration with other projects, with comprehensive protocol support for distributed thermal management across multiple machines and data centers.
+
+---
+
+## Design Decision Log
+
+### Phase 2 Decisions (Made during implementation)
+
+**State Naming Convention**: 
+- Decision: Continue using string keys ("actual", "desired") for state dictionaries
+- Rationale: Formalization into constants/enums deferred until System implementation reveals actual usage patterns
+- Future: May formalize when concrete patterns emerge
+
+**Device Property Validation**:
+- Decision: Maintain flexible properties dictionary without enforced schemas
+- Rationale: Different controllers will have different validation requirements
+- Implementation: Validation logic delegated to specific controller implementations
+
+**Process Configuration and Discovery**:
+- Decision: Each System implementation responsible for process instantiation and configuration
+- Rationale: Allows flexibility for different deployment scenarios (daemon vs library)
+- Implementation: Configuration mechanisms deferred to concrete System classes
+
+**Performance and Deep Copying**:
+- Decision: Accept `copy.deepcopy()` overhead for state immutability
+- Rationale: Expected device counts (5-15 sensors, 3-8 actuators) and update frequency (~100ms) make performance impact negligible
+- Mitigation: "Gentleman's agreement" to pass minimal state sets rather than premature optimization
+- Evidence: Python's deepcopy creates real copies, but cost acceptable for planned scale
+
+**Error Handling Philosophy**:
+- Decision: Never abort thermal control pipelines on process failures
+- Rationale: Thermal systems must continue operating even with component failures
+- Implementation: Catch all exceptions, log with full traceback, continue with state passthrough
+
+### Next Phase Considerations
+
+**System State Persistence**: Unlike stateless Processes, System will maintain state between executions for proper thermal control loops.
+
+**Update Loop Timing**: Target ~100ms intervals, loose real-time constraints acceptable for thermal management use case.

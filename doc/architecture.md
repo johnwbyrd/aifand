@@ -27,21 +27,69 @@ The `Device` class represents a single interface point with hardware. It extends
 
 Two specialized device types exist: `Sensor` for reporting values from the environment (temperature, fan RPM), and `Actuator` for performing actions (fan PWM control, thermal limits).
 
-A `State` represents a snapshot of device properties at a specific moment, implemented as a collection of Devices. States are unopinionated about their meaning; their role (like "actual" or "desired") is defined by how a `Process` uses them.
+A `State` represents a snapshot of device properties at a specific moment, implemented as an immutable collection of Devices indexed by name. States are unopinionated about their meaning; their role (like "actual" or "desired") is defined by how a `Process` uses them. States provide helper methods for device access, addition, and removal while maintaining immutability through copy-on-write semantics.
 
 ### Process
 
-The `Process` class represents computational units that transform data within the system. Each process maintains a dictionary of named states and an ordered list of child processes forming a serial execution pipeline. The base `Process` class defines an abstract execute method that subclasses implement.
+The `Process` class represents computational units that transform data within the system. Processes receive a dictionary of named states (e.g., "actual", "desired") and return a transformed dictionary of states. Each process can contain an ordered list of child processes that execute serially to form execution pipelines.
 
-An `Environment` can read and modify sensors, but it can only read actuators in its input state. `Simulation` environments may read virtual actuators in response to an imaginary environment, and write imaginary sensors, but `Hardware` is the base class for the real thing, such as hwmon or the like.
+**Key characteristics implemented:**
+- **Stateless execution**: No data persists between execute() calls
+- **Serial pipeline**: Child processes execute in order with state passthrough
+- **Error resilience**: Exceptions are caught, logged, and execution continues with passthrough behavior
+- **Immutable operations**: Input states are deep-copied to prevent modification
+- **Per-process logging**: Each process gets its own hierarchical logger
 
-A `Controller` can read and modify actuators, but it can only read sensors in its input state. A controller contains decision-making logic. It receives state objects and produces new state objects representing proposed settings for actuators.
+**Execution behavior:**
+- If a process has no children, it executes its own `_execute_impl()` method
+- If a process has children, it executes them serially, passing each child's output as the next child's input
+- Failed processes log errors but don't abort the pipeline (critical for thermal systems)
+
+An `Environment` can read and modify sensors, but should only read actuators from its input state. `Simulation` environments may model virtual hardware responses, while `Hardware` environments interface with real hardware via Linux hwmon.
+
+A `Controller` can read and modify actuators, but should only read sensors from its input state. Controllers contain decision-making logic that determines actuator settings based on sensor readings.
 
 ### System
 
 The `System` class orchestrates overall operation, managing an environment and ordered controller pipeline. It maintains named states including current system state ("actual") and target state ("desired"). During each update cycle, the system executes its pipeline in sequence, allowing controllers to transform states toward desired outcomes.
 
+**Implementation status**: Not yet implemented. Will handle state persistence between executions, unlike individual Processes.
+
+**Planned features**:
+- State management and context handling for named states
+- Configuration loading and process instantiation  
+- Update loop timing (targeting ~100ms intervals, not hard real-time)
+- Inter-system communication capabilities
+
 Systems can publish and receive custom composite states from other systems, enabling abstraction and inter-system communication. Because a system is itself a process, it can be included within higher-level systems for multi-layered architectures.
+
+## Implementation Status and Design Decisions
+
+### Current Implementation (Phase 2 Complete)
+
+The core abstractions are fully implemented and tested:
+
+- **Entity base class**: UUID identification, arbitrary properties, full serialization
+- **Device classes**: Sensor and Actuator with flexible property storage
+- **State class**: Immutable device collections with helper methods
+- **Process architecture**: Abstract base with Environment and Controller subclasses
+- **Comprehensive test suite**: 60 tests covering all functionality
+
+### Key Design Decisions Made
+
+**State naming strategy**: Currently using string keys ("actual", "desired") for state dictionaries. Formalization into constants/enums deferred to when System class is implemented and usage patterns become clear.
+
+**Device property validation**: Flexible properties dictionary approach maintained. Validation logic will be implemented in specific controller implementations rather than at the Device level, allowing different controllers to have different requirements.
+
+**Process configuration and discovery**: Deferred to concrete System implementations. Each System will be responsible for instantiating and configuring its process pipeline.
+
+**Performance considerations**: 
+- Deep copying of states through process pipelines is acceptable for expected device counts (5-15 temperature sensors, 3-8 fan controllers)
+- Update frequency targeting ~100ms intervals (loose real-time requirements)
+- Optimization strategy: "gentleman's agreement" to pass minimal state sets rather than premature optimization
+- Python's `copy.deepcopy()` creates real copies, not reference updates, but performance impact expected to be negligible at planned scale
+
+**Error handling philosophy**: Never abort thermal control pipelines. Failed processes log errors and continue with passthrough behavior to maintain system stability.
 
 ## Protocol Layer Architecture
 

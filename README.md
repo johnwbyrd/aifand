@@ -19,3 +19,21 @@
 The project is actively under development. The core architecture has been designed, focusing on a pipeline of composable `Stage`s (`Controllers` and `Environments`) managed by a central `System` orchestrator.
 
 We are currently in the process of implementing the foundational classes and testing frameworks.
+
+## Development
+
+### Running Tests
+
+```bash
+pytest tests/ -v --cov=src/aifand --cov-report=term-missing
+```
+
+### Code Quality Checks
+
+Run all quality checks (linting, type checking, tests, security scans):
+
+```bash
+hatch run check
+```
+
+This mirrors the same checks run in CI/CD.

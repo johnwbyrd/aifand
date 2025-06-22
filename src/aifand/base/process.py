@@ -3,7 +3,7 @@
 import copy
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from pydantic import Field
 
@@ -32,7 +32,7 @@ class Process(Entity, ABC):
         default_factory=list, description="Ordered list of child processes for pipeline execution"
     )
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         # Create a logger specific to this process instance
         self._logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}")
