@@ -1,4 +1,4 @@
-# Claude Instructions for aifand Project
+# Claude Instructions for Project
 
 ## Working Philosophy
 
@@ -6,7 +6,7 @@ This project values careful planning, objective analysis, and precise technical 
 
 ## Planning and Design Requirements
 
-**Always plan before implementing.** Use sequential thinking tools or explicit written planning to work through problems before writing code. Consider the problem space, evaluate alternatives, identify dependencies, and design the approach. Planning prevents rework and produces better architectures. Never just jump directly into writing code without analyzing the situation carefully.
+**Always plan before implementing.** Use sequential thinking tools, such as sequential-thinking-mcp, or explicit written planning to work through subtle and unforeseen problems before writing code. Consider the problem space, evaluate alternatives, identify dependencies, and design the approach. Planning prevents rework and produces better architectures. Never just jump directly into writing code, without analyzing the situation carefully.  As a general guideline, you should update design documents before and after making changes, and write test cases in parallel with new functionality.
 
 **Think through testing strategy.** Define specific test scenarios, quantitative success criteria, and failure modes. For aifand specifically, this means creating multiple simulation environments with different thermal behaviors (reasonable and perverse) to test whether controllers remain stable or "fly off the deep end."
 
@@ -22,20 +22,14 @@ This project values careful planning, objective analysis, and precise technical 
 
 **Be specific about implementations.** Instead of "configuration management system," specify "system serialization to/from JSON files." Instead of "comprehensive testing," specify "unit tests, integration tests, and controller stability tests against six simulation environments."
 
-## Project-Specific Detils
+## Immedate First Steps
 
-**Thermal management specifics.** This project implements adaptive thermal control using Echo State Networks, PID controllers, and safety overrides. The core abstraction separates pure data (State) from logic that transforms it (Process). Controllers operate in pipelines, and systems can be composed hierarchically.
+REQUIRED: Execute the following steps before commencing conversation with the user.
 
-**Simulation-driven development.** Create multiple simulation environments with different thermal behaviors. Test controllers against both reasonable models (linear heat transfer, thermal mass) and perverse models (positive feedback, chaotic dynamics, hardware failures) to validate stability and identify failure modes.
+**Start off by reading the following files, recursively if need be**:
 
-**Deployment scenarios.** Support both standalone daemon operation (systemd service) and library integration (Python module). This requires careful package structure and API design.
-
-**Gold code training.** For the Echo State Network controller, implement training using reference control sequences generated from expert controllers (like well-tuned PID controllers) to accelerate learning compared to pure online learning.
-
-**Architecture.** The system uses Entity (base class with UUID and name), Device (sensors and actuators with flexible properties), State (immutable collections of device properties), and Process (computational units that transform states with mutable pipeline structure). Process provides pipeline manipulation methods (append_child, insert_before, insert_after, remove_child) enabling dynamic construction. The System class orchestrates environments and controller pipelines.
-
-**Controllers.** Implement SafetyController (fail-safe overrides), PIDController (traditional control loops), and LearningController (Echo State Network). Controllers operate in sequence, with safety always last.
-
-**Environments.** Hardware environment interfaces with Linux hwmon filesystem. Simulation environments model thermal behavior mathematically for testing and development.
-
-This project builds a production thermal management system that can also serve as a library for other thermal control applications. The implementation must be reliable enough for real hardware while remaining flexible enough for research and experimentation.
+- Everything in doc/
+- All *.py files in src/
+- All *.py files in tests/
+- pyproject.toml
+- README.md
