@@ -18,12 +18,13 @@ class Device(Entity):
     Standard property naming conventions for thermal management:
     - value: Current reading/setting
     - unit: Measurement unit (°C, RPM, PWM, etc.)
-    - min/max: Operating range limits
-    - critical: Critical threshold (for sensors)
+    - type: Type of device (e.g., 'temperature', 'fan', 'voltage'
+    - min/max: Operating range limits (note: these are themselves dicts with options like 'warning' and 'critical')
     - label: Human-readable description
     - hwmon_path: Linux hwmon filesystem path
     - enable_path: Hardware enable/disable path (for actuators)
     - scale: Conversion factor for raw hardware values
+    - prefer: +1 for numbers we prefer to go up, -1 for those we prefer to go down
     """
 
     properties: Dict[str, Any] = Field(

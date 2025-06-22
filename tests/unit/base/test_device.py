@@ -3,6 +3,7 @@
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from src.aifand.base.device import Actuator, Device, Sensor
 
@@ -48,7 +49,7 @@ class TestDevice:
         """Test that device properties cannot be modified after creation."""
         device = Device(name="test", properties={"value": 50})
 
-        with pytest.raises(Exception):  # pydantic will raise validation error
+        with pytest.raises(ValidationError):  # pydantic frozen model raises ValidationError
             device.properties = {"value": 60}
 
     def test_device_serialization(self):
