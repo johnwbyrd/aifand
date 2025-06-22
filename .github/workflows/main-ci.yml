@@ -145,9 +145,14 @@ jobs:
 
     - name: Run security scan on project dependencies only
       run: |
-        # Scan project dependencies for vulnerabilities (non-blocking for system packages)
-        # Use new safety scan command (safety check is deprecated)
-        safety scan --output json --save-as json safety-report.json || echo "Security warnings found in dependencies but not blocking build"
+        # Create requirements.txt from installed packages for scanning
+        pip freeze > requirements.txt
+        # Try safety scan first, fall back to pip-audit if it fails due to auth issues
+        safety scan --target . --output json --save-as json safety-report.json || {
+          echo "Safety scan failed, trying pip-audit as fallback"
+          pip install pip-audit
+          pip-audit --format=json --output=safety-report.json || echo "Security scanning completed with warnings"
+        }
         
     - name: Run security scan on our code (blocking)
       run: |
