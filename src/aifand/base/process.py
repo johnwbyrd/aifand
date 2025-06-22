@@ -69,6 +69,9 @@ class Process(Entity, ABC):
             try:
                 self._logger.debug(f"Executing process {self.name}")
                 return self._execute_impl(result_states)
+            except PermissionError:
+                # Permission errors should bubble up - they're programming errors, not operational failures
+                raise
             except Exception as e:
                 self._logger.error(f"Process {self.name} failed during execution: {e}", exc_info=True)
                 return result_states  # Passthrough on error
@@ -80,6 +83,9 @@ class Process(Entity, ABC):
                 try:
                     self._logger.debug(f"Executing child {i}: {child.name}")
                     result_states = child.execute(result_states)
+                except PermissionError:
+                    # Permission errors should bubble up - they're programming errors, not operational failures
+                    raise
                 except Exception as e:
                     self._logger.error(
                         f"Child process {child.name} (index {i}) failed in {self.name} pipeline: {e}", exc_info=True

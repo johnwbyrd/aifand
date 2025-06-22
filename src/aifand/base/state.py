@@ -1,6 +1,7 @@
 """State classes for thermal management system snapshots."""
 
-from typing import Dict
+import inspect
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,12 +42,33 @@ class State(BaseModel):
 
     def with_device(self, device: Device) -> "State":
         """Return a new State with the given device added or updated."""
+        # Check permission for this specific device before adding it
+        from .permissions import can_process_modify_device
+
+        modifying_process = self._find_calling_process()
+        if modifying_process and not can_process_modify_device(modifying_process, device):
+            raise PermissionError(
+                f"{modifying_process.__class__.__name__} cannot modify {device.__class__.__name__} '{device.name}'"
+            )
+
         new_devices = dict(self.devices)
         new_devices[device.name] = device
         return State(devices=new_devices)
 
     def with_devices(self, devices: Dict[str, Device]) -> "State":
         """Return a new State with the given devices added or updated."""
+        # Check permission for each device before adding it
+        from .permissions import can_process_modify_device
+
+        modifying_process = self._find_calling_process()
+        if modifying_process:
+            for device in devices.values():
+                if not can_process_modify_device(modifying_process, device):
+                    raise PermissionError(
+                        f"{modifying_process.__class__.__name__} cannot modify "
+                        f"{device.__class__.__name__} '{device.name}'"
+                    )
+
         new_devices = dict(self.devices)
         new_devices.update(devices)
         return State(devices=new_devices)
@@ -56,6 +78,19 @@ class State(BaseModel):
         new_devices = dict(self.devices)
         new_devices.pop(name, None)
         return State(devices=new_devices)
+
+    @classmethod
+    def _find_calling_process(cls) -> Optional[Any]:
+        """Find the Process instance in the call stack."""
+        for frame_info in inspect.stack():
+            frame_locals = frame_info.frame.f_locals
+            if (
+                "self" in frame_locals
+                and hasattr(frame_locals["self"], "_execute_impl")
+                and hasattr(frame_locals["self"], "__class__")
+            ):
+                return frame_locals["self"]
+        return None
 
     def __repr__(self) -> str:
         """Return a string representation showing device count and names."""
