@@ -1,48 +1,95 @@
 # aifand Architecture
 
-This document outlines the software architecture for `aifand`, an adaptive thermal management system.
+This document outlines the software architecture for `aifand`, an adaptive thermal management system designed for both local and remote operation across multiple network protocols.
 
 ## Core Philosophy
 
-The `aifand` architecture automatically discovers and learns the thermal properties of the hardware it manages without manual configuration. It separates pure data (`State`) from the logic that transforms it (`Process`). Complex behaviors, including safety overrides and hierarchical control, are achieved by combining simple, composable building blocks in a well-defined pipeline.
+The `aifand` architecture automatically discovers and learns the thermal properties of hardware without manual configuration. It separates pure data (`State`) from logic that transforms it (`Process`), enabling complex behaviors through composable building blocks. The system supports multiple network protocols for remote monitoring and control while maintaining a single source of truth through pydantic models.
 
 ## Key Abstractions and Data Models
 
 ### Entity
 
-The `Entity` class serves as the foundational base for all objects within the system. Each entity has a unique identifier (`uuid`) and a human-readable name. Through inheritance from `pydantic.BaseModel`, entities support serialization to formats like JSON. All core classes such as `Device`, `Process`, and `System` inherit from `Entity` to ensure consistent identification and serialization across the architecture.
+The `Entity` class serves as the foundational base for all objects within the system. Each entity has a unique identifier (`uuid`) and human-readable name, with support for arbitrary additional properties through pydantic's `extra="allow"` configuration.
+
+**Implementation details:**
+- Inherits from `pydantic.BaseModel` with `frozen=True` for immutability
+- Automatic UUID generation via `uuid4()` if not provided
+- Supports arbitrary key-value pairs alongside core fields
+- Full JSON serialization/deserialization support
+- String representation shows all fields for debugging
+
+All core classes (`Device`, `Process`, `System`) inherit from `Entity` to ensure consistent identification, serialization, and extensibility across the architecture.
 
 ### Data Models
 
-The `Device` class represents a single interface point with the hardware. It holds a flexible properties dictionary that can store arbitrary key-value pairs like value, min, max, label, hwmon_path, scale, and ratio. Two specialized device types exist: `Sensor` for reporting values from the environment (like temperature or fan RPM), and `Actuator` for performing actions (like fan PWM control).
+The `Device` class represents a single interface point with hardware. It extends Entity with a flexible properties dictionary storing arbitrary key-value pairs like value, min, max, label, hwmon_path, scale, and unit. Standard property naming conventions ensure consistency across thermal management operations.
 
-A `State` represents a snapshot of device properties at a single moment in time, implemented as a set of Devices. States are unopinionated about their meaning; their role (like "actual" or "desired") is defined by how a `Process` uses them. For example, a state might contain `{ "cpu_temp": {"value": 72}, "case_fan": {"value": 1250} }`.
+Two specialized device types exist: `Sensor` for reporting values from the environment (temperature, fan RPM), and `Actuator` for performing actions (fan PWM control, thermal limits).
+
+A `State` represents a snapshot of device properties at a specific moment, implemented as a collection of Devices. States are unopinionated about their meaning; their role (like "actual" or "desired") is defined by how a `Process` uses them.
 
 ### Process
 
-The `Process` class represents computational units that transform data within the system. Each process maintains a dictionary of named states and an ordered list of child processes that form a serial execution pipeline. Processes can look up contained entities by name, uuid, or type. The base `Process` class defines an abstract execute method that subclasses implement with their specific logic.
+The `Process` class represents computational units that transform data within the system. Each process maintains a dictionary of named states and an ordered list of child processes forming a serial execution pipeline. The base `Process` class defines an abstract execute method that subclasses implement.
 
-A `Process` that interfaces with hardware is called an `Environment`. It can read actuators and read/write sensors through `read()` and `apply()` methods. Most environments only write sensors, though simulated environments may read actuators to modify sensors.
+An `Environment` can read and modify sensors, but it can only read actuators in its input state. `Simulation` environments may read virtual actuators in response to an imaginary environment, and write imaginary sensors, but `Hardware` is the base class for the real thing, such as hwmon or the like.
 
-A `Controller` contains decision-making logic. It receives a state object and produces a new state object representing proposed settings for one or more actuators.
+A `Controller` can read and modify actuators, but it can only read sensors in its input state. A controller contains decision-making logic. It receives state objects and produces new state objects representing proposed settings for actuators.
 
 ### System
 
-The `System` class orchestrates the overall operation of the application. It manages an environment and an ordered pipeline of controllers, maintaining a dictionary of named states that includes the current system state ("actual") and target state ("desired"). During each update cycle, the system executes its pipeline in sequence, allowing each controller to transform states toward desired outcomes.
+The `System` class orchestrates overall operation, managing an environment and ordered controller pipeline. It maintains named states including current system state ("actual") and target state ("desired"). During each update cycle, the system executes its pipeline in sequence, allowing controllers to transform states toward desired outcomes.
 
-Systems can publish and receive custom composite states, enabling abstraction and inter-system communication. Because a system is itself a process, it can be included within higher-level systems to build multi-layered architectures.
+Systems can publish and receive custom composite states from other systems, enabling abstraction and inter-system communication. Because a system is itself a process, it can be included within higher-level systems for multi-layered architectures.
+
+## Protocol Layer Architecture
+
+The protocol layer enables remote thermal management across multiple network protocols while maintaining protocol-agnostic core logic. All protocols expose the same underlying pydantic thermal models through different transport mechanisms.
+
+### Protocol Use Cases
+
+- **gRPC**: High-frequency sensor data streaming, real-time control commands, authenticated remote management
+- **HTTP/REST**: Configuration management, status queries, integration with web dashboards
+- **MQTT**: Distributed sensor networks, IoT device integration, pub/sub thermal alerts
+- **WebSocket**: Real-time dashboard updates, live thermal monitoring
+- **Prometheus**: Metrics collection, alerting, performance monitoring
+
+## Serialization Strategy
+
+The architecture assumes that pydantic models serve as the single source of truth for all data structures. This ensures consistency across all protocols and eliminates schema drift.
+
+### Core Serialization Features
+
+- **Single Schema Definition**: Thermal entities defined once as pydantic models
+- **Multiple Protocol Support**: Same models exposed via gRPC, HTTP, MQTT, WebSocket
+- **Automatic Code Generation**: Protocol stubs generated from pydantic models
+- **Type Safety**: Full type checking across network boundaries
+- **Arbitrary Properties**: Flexible key-value extension without protocol changes
+
+### Protocol-Specific Adaptations
+
+- **gRPC**: Uses `pydantic-rpc` to automatically generate protobuf definitions from pydantic models
+- **HTTP**: Direct FastAPI integration with pydantic models
+- **MQTT**: JSON serialization via `model_dump_json()`
+- **WebSocket**: Real-time streaming of pydantic model updates
+- **Prometheus**: Metric extraction from pydantic model properties
 
 ## Concrete Implementations
 
-The `Hardware` environment interfaces with physical hardware through the Linux hwmon filesystem. It discovers available sensors and actuators, populates its device list, and implements read/apply methods for real-world interaction. It may create composite devices like an average CPU temperature.
+### Environments
 
-The `Simulation` environment creates a virtual world containing virtual devices and a mathematical model defining their relationships. It enables testing controllers in a repeatable, deterministic way.
+The `Hardware` environment interfaces with physical hardware through the Linux hwmon filesystem. It discovers available sensors and actuators, populates device lists, and implements read/apply methods for real-world interaction.
 
-The `SafetyController` implements fail-safe logic. It checks for critical conditions in the actual state and, if triggered, returns a state that overrides other controllers to put the system into a safe mode. It should be the last controller in the pipeline.
+The `Simulation` environment creates virtual worlds with mathematical thermal models. Multiple simulation types support controller testing: LinearThermal, ThermalMass, RealisticSystem, UnstableSystem, FailureSimulation, and ChaosSystem.
 
-The `PIDController` implements standard Proportional-Integral-Derivative control. It watches a specific sensor's value, compares it to a target from the desired state, and computes actuator values to minimize error. Multiple instances can control different loops independently.
+### Controllers
 
-The `LearningController` uses an Echo State Network to learn relationships between devices. It works to satisfy goals while potentially optimizing for factors like noise or power by observing the entire system state.
+The `SafetyController` implements fail-safe logic, monitoring actual state against critical thresholds and overriding other controllers when triggered. It executes last in the controller pipeline.
+
+The `PIDController` implements standard Proportional-Integral-Derivative control with anti-windup and derivative filtering. Multiple instances can control independent loops.
+
+The `LearningController` uses Echo State Networks to learn thermal relationships and optimize for multiple objectives like efficiency and noise.
 
 ## The Execution Pipeline
 
@@ -91,6 +138,7 @@ classDiagram
     class Entity {
         +uuid: UUID
         +name: str
+        +properties: dict
     }
     class Device {
         +properties: dict
@@ -107,10 +155,12 @@ classDiagram
     class Controller
     class Environment
     class System
-    class LearningController
-    class SafetyController
-    class Hardware
-    class Simulation
+    class ProtocolServer {
+        <<Abstract>>
+    }
+    class gRPCServer
+    class HTTPServer
+    class MQTTPublisher
 
     Entity <|-- Device
     Entity <|-- Process
@@ -119,10 +169,10 @@ classDiagram
     Controller --|> Process
     Environment --|> Process
     System --|> Process
-    LearningController --|> Controller
-    SafetyController --|> Controller
-    Hardware --|> Environment
-    Simulation --|> Environment
+    ProtocolServer --|> Entity
+    gRPCServer --|> ProtocolServer
+    HTTPServer --|> ProtocolServer
+    MQTTPublisher --|> ProtocolServer
 
     System o-- "1" Environment
     System o-- "1..*" Controller
@@ -130,36 +180,26 @@ classDiagram
     Environment o-- "*" Device : "contains"
     Controller ..> State : "operates on"
     Environment ..> State : "produces/consumes"
+    ProtocolServer ..> System : "exposes remotely"
 ```
 
-## Hierarchical Composition
+## Remote System Communication
 
-A system's default representation as a process is its own internal actual state. However, a system can synthesize its own composite state or set of states for publishing to the outside world. This enables building complex control systems by composing simpler, self-contained systems that expose high-level state summaries.
+Systems can communicate across networks using any supported protocol. A local system can monitor and control remote systems through protocol-specific clients, enabling distributed thermal management across multiple machines or data centers.
 
-## Project Structure
+### Hierarchical Composition
 
-```
-src/
-├── base/
-│   ├── __init__.py
-│   ├── entity.py        # Entity base class
-│   ├── device.py        # Device, Sensor, Actuator classes
-│   ├── state.py         # State type definitions
-│   └── process.py       # Process, Controller, Environment abstracts
-├── controllers/
-│   ├── __init__.py
-│   ├── pid.py           # PIDController
-│   ├── safety.py        # SafetyController
-│   ├── learning.py      # LearningController
-│   └── fixed.py         # FixedSpeedController (testing)
-├── environments/
-│   ├── __init__.py
-│   ├── hardware.py      # Hardware environment
-│   └── simulation.py    # Simulation environment
-├── system.py            # System orchestrator
-└── daemon.py            # Daemon entry point
-```
+Systems can be composed hierarchically, with higher-level systems managing collections of lower-level systems. Remote systems appear as virtual devices to parent systems, enabling scalable thermal management architectures.
 
-## Testing
+## Testing Strategy
 
-The architecture supports testing through the simulation environment. Developers can craft specific, deterministic states to test controller logic without physical hardware.
+The architecture supports comprehensive testing through multiple approaches:
+
+### Testing Approach
+- **Unit Tests**: Individual component validation with pytest
+- **Integration Tests**: Complete system pipeline testing
+- **Simulation Tests**: Controller behavior against mathematical thermal models
+- **Hardware Tests**: Real-world validation and safety verification
+- **Protocol Tests**: Multi-protocol serialization and network communication
+
+The simulation environments enable testing controller stability against both reasonable thermal models and perverse edge cases (positive feedback, chaotic dynamics, hardware failures) without risking physical hardware.
