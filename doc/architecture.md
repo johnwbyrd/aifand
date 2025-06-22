@@ -42,7 +42,7 @@ The `Process` class represents computational units that transform data within th
 - **Per-process logging**: Each process gets its own hierarchical logger
 
 **Execution behavior:**
-- If a process has no children, it executes its own `_execute_impl()` method
+- If a process has no children, it executes its own `_process()` method
 - If a process has children, it executes them serially, passing each child's output as the next child's input
 - Failed processes log errors but don't abort the pipeline (critical for thermal systems)
 - PermissionError exceptions bubble up as programming errors (unlike operational failures)
@@ -72,11 +72,11 @@ Pipelines operate standalone for single control flows or under Systems for coord
 
 Pipeline uses a modulo-based timing approach with configurable intervals (default 100ms). The pipeline calculates next execution time as `start_time + (execution_count * interval)` and sleeps for the remainder, ensuring consistent intervals regardless of execution duration. This approach remains portable across platforms without requiring OS-specific timer mechanisms.
 
-Pipeline maintains a `states: Dict[str, State]` field containing named states that persist between timer executions. When running standalone, Pipeline repeatedly calls `self.execute(self.states)` and updates the persistent states with results. When used as a Process in another pipeline, Pipeline behaves identically to other Processes - the persistent states are not used, and execute() simply processes the input states and returns transformed results.
+Pipeline maintains a `states: Dict[str, State]` field containing named states that persist between timer executions. Pipeline supports two execution modes: autonomous timing-driven execution via `start()` method for standalone thermal control, and standard Process execution when embedded in larger Systems. In autonomous mode, Pipeline repeatedly calls `self.execute(self.states)` and updates persistent states with results. In embedded mode, Pipeline behaves identically to other Processes - persistent states are ignored and execute() processes input states from the parent System.
 
 Pipeline follows the convention of one Environment followed by Controllers, though this is not enforced as a hard rule. Helper methods like `set_environment()` and `add_controller()` guide users toward the common pattern while preserving flexibility for composition patterns and future use cases.
 
-Devices include `last_updated: Optional[int]` (nanosecond timestamp from `time.time_ns()`) and `quality: str` fields to track operational state. Quality uses extensible strings with documented standard values ("good", "stale", "failed", "unknown"). Only Environment processes update sensor timestamps, while computed devices receive timestamps when calculated. This enables sophisticated failure handling and safety strategies.
+Devices include `timestamp` (nanosecond timestamp from `time.time_ns()`) and `quality` fields in their properties to track operational state. Quality uses extensible strings with documented standard values ("valid", "stale", "failed", "unavailable"). Only Environment processes update sensor timestamps, while computed devices receive timestamps when calculated. This enables sophisticated failure handling and safety strategies.
 
 The immutable State design and deep copying in Process execution naturally handles concurrent access. Timer execution in background threads operates safely because states are immutable and dict assignment is atomic in Python.
 
@@ -246,3 +246,15 @@ Critical to controller validation is the creation of deliberately pathological t
 Simulation environments include parametrically generated thermal models with randomized characteristics that stress different aspects of controller behavior. Seed-based generation ensures that the same pathological thermal conditions can be reproduced for regression testing and controller comparison. The framework creates thermal models with deliberately perverse physics including non-linear responses, chaotic dynamics with sensitive dependence on initial conditions, positive feedback loops designed to induce thermal runaway, sudden discontinuities and bifurcations in thermal behavior, and randomized parameter variations that change during simulation execution.
 
 The goal is comprehensive stress testing where controllers must demonstrate stability across thousands of randomly generated thermal environments, each designed to exploit different potential failure modes. Controllers that "fly off the deep end" under these adversarial conditions indicate fundamental stability problems that would manifest unpredictably in real-world deployment. Only controllers that remain stable across the full spectrum of pathological thermal models are considered suitable for production thermal management.
+
+---
+
+## Implementation Decisions
+
+**Process Interface Improvements**: The base Process class uses `_process()` method for subclass implementations instead of `_execute_impl()` for improved developer experience. Process includes optional `states: Dict[str, State]` field for stateful processes like PID controllers and simulations that need to maintain internal state between executions.
+
+**Pipeline Execution Modes**: Pipeline supports autonomous timing-driven execution via `start()/stop()` methods for standalone thermal control loops, and standard Process execution when embedded in larger Systems. The same `execute()` method handles both modes - autonomous mode calls it repeatedly on persistent states, embedded mode processes input states from parent Systems.
+
+**Device Quality Management**: Device properties include `timestamp` and `quality` fields with standard values ("valid", "stale", "failed", "unavailable") for operational state tracking. Only Environment processes update sensor timestamps and quality, preventing Controllers from corrupting sensor metadata.
+
+**Update Loop Timing**: Target ~100ms intervals with modulo-based timing that ensures consistent intervals regardless of execution duration. Graceful shutdown via `stop()` method requests termination and can interrupt sleep cycles for responsive shutdown.
