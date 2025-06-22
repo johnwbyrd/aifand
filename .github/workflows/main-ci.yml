@@ -145,10 +145,9 @@ jobs:
 
     - name: Run security scan on project dependencies only
       run: |
-        # Create requirements.txt from installed packages for scanning
-        pip freeze > requirements.txt
-        # Scan only our project dependencies (non-blocking for system packages)
-        safety check --file requirements.txt --continue-on-error || echo "Security warnings found in dependencies but not blocking build"
+        # Scan project dependencies for vulnerabilities (non-blocking for system packages)
+        # Use new safety scan command (safety check is deprecated)
+        safety scan --output json --save-as json safety-report.json || echo "Security warnings found in dependencies but not blocking build"
         
     - name: Run security scan on our code (blocking)
       run: |
@@ -164,3 +163,4 @@ jobs:
         name: security-reports
         path: |
           bandit-report.json
+          safety-report.json
