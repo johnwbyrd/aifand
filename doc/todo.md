@@ -2,39 +2,10 @@
 
 ## Overview
 
-This document outlines the remaining implementation tasks for `aifand`, an adaptive thermal management system that operates as a standalone service and as a Python library. The foundational abstractions (Entity, Device, State, Process) are complete with comprehensive testing. The implementation now focuses on building the Pipeline and System execution layers, simulation environments, controllers, and deployment infrastructure.
+This document outlines the remaining implementation tasks for `aifand`.
 
 ---
 
-## Pipeline Implementation
-
-### Objective
-Create the Pipeline class for single thermal control flows, implementing the main execution loop with state persistence and timing control.
-
-### Status: READY TO START
-Foundational abstractions are complete. Pipeline will handle state persistence between executions for proper thermal control loops.
-
-### Tasks
-1. **Implement `Pipeline` Process** (src/aifand/base/pipeline.py):
-   - Create `Pipeline` class extending Process with state persistence capability
-   - Implement main execution loop with ~100ms timing (loose real-time)
-   - Add support for named states context management ("actual", "desired", etc.)
-   - Handle configuration loading and process instantiation
-   - Implement modulo-based timing with configurable intervals
-
-2. **Pipeline State Management**:
-   - Maintain `states: Dict[str, State]` field for persistence between executions
-   - Support both standalone execution (uses persistent states) and Process execution (stateless)
-   - Implement helper methods: `set_environment()`, `add_controller()`
-   - Add device timestamp and quality tracking for operational state
-
-3. **Pipeline Testing Framework**:
-   - Unit tests for Pipeline state management and timing
-   - Integration tests for Environment + Controller execution flows
-   - Test scenarios: standalone vs embedded execution modes
-   - Timing accuracy and consistency validation
-
----
 
 ## Simulation Environments
 

@@ -2,6 +2,7 @@
 
 from .device import Actuator, Device, Sensor
 from .entity import Entity
+from .pipeline import Pipeline
 from .process import Controller, Environment, Process
 from .state import State
 
@@ -14,4 +15,5 @@ __all__ = [
     "Process",
     "Environment",
     "Controller",
+    "Pipeline",
 ]

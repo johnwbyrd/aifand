@@ -74,6 +74,8 @@ Pipeline uses a modulo-based timing approach with configurable intervals (defaul
 
 Pipeline maintains a `states: Dict[str, State]` field containing named states that persist between timer executions. Pipeline supports two execution modes: autonomous timing-driven execution via `start()` method for standalone thermal control, and standard Process execution when embedded in larger Systems. In autonomous mode, Pipeline repeatedly calls `self.execute(self.states)` and updates persistent states with results. In embedded mode, Pipeline behaves identically to other Processes - persistent states are ignored and execute() processes input states from the parent System.
 
+Pipeline uses nanosecond time units with `interval_ns` field (default 100ms) and `time.time_ns()` for scheduling. The `get_time()` method can be overridden for alternative time sources like GPS or NTP. Timing fields are serialized for remote monitoring and debugging.
+
 Pipeline follows the convention of one Environment followed by Controllers, though this is not enforced as a hard rule. Helper methods like `set_environment()` and `add_controller()` guide users toward the common pattern while preserving flexibility for composition patterns and future use cases.
 
 Devices include `timestamp` (nanosecond timestamp from `time.time_ns()`) and `quality` fields in their properties to track operational state. Quality uses extensible strings with documented standard values ("valid", "stale", "failed", "unavailable"). Only Environment processes update sensor timestamps, while computed devices receive timestamps when calculated. This enables sophisticated failure handling and safety strategies.
@@ -251,10 +253,12 @@ The goal is comprehensive stress testing where controllers must demonstrate stab
 
 ## Implementation Decisions
 
-**Process Interface Improvements**: The base Process class uses `_process()` method for subclass implementations instead of `_execute_impl()` for improved developer experience. Process includes optional `states: Dict[str, State]` field for stateful processes like PID controllers and simulations that need to maintain internal state between executions.
+**Process Interface Improvements**: The base Process class uses `_process()` method for subclass implementations instead of `_execute_impl()` for improved developer experience.
 
 **Pipeline Execution Modes**: Pipeline supports autonomous timing-driven execution via `start()/stop()` methods for standalone thermal control loops, and standard Process execution when embedded in larger Systems. The same `execute()` method handles both modes - autonomous mode calls it repeatedly on persistent states, embedded mode processes input states from parent Systems.
 
+**Nanosecond Time Units**: Pipeline uses `interval_ns` field and `time.time_ns()` for timing with nanosecond time units. Overrideable `get_time()` method supports alternative time sources like GPS or NTP.
+
 **Device Quality Management**: Device properties include `timestamp` and `quality` fields with standard values ("valid", "stale", "failed", "unavailable") for operational state tracking. Only Environment processes update sensor timestamps and quality, preventing Controllers from corrupting sensor metadata.
 
-**Update Loop Timing**: Target ~100ms intervals with modulo-based timing that ensures consistent intervals regardless of execution duration. Graceful shutdown via `stop()` method requests termination and can interrupt sleep cycles for responsive shutdown.
+**Update Loop Timing**: Modulo-based timing ensures consistent intervals regardless of execution duration. Graceful shutdown via `stop()` method requests termination and can interrupt sleep cycles for responsive shutdown. Timing fields are serialized for remote monitoring and debugging.
