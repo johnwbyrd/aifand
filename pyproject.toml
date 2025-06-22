@@ -107,3 +107,8 @@ check = [
   "bandit -r src/",
   "safety scan || pip-audit",
 ]
+
+[[tool.uv.index]]
+name = "safety"
+url = "https://pkgs.safetycli.com/repository/none-76b14/project/aifand/pypi/simple/"
+default = false
