@@ -87,45 +87,6 @@ jobs:
         name: python-package
         path: dist/
 
-  build-deb:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install Debian build tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y debhelper devscripts build-essential
-
-    - name: Create Debian package structure
-      run: |
-        # This will be implemented when we create debian/ directory
-        echo "Debian package building placeholder"
-        echo "Will create .deb package for aifand daemon"
-
-    - name: Upload Debian artifacts (placeholder)
-      run: |
-        echo "Future: Upload .deb files for apt repository"
-
-  deploy-staging:
-    needs: [build-package, build-deb]
-    runs-on: ubuntu-latest
-    environment: staging
-    if: github.ref == 'refs/heads/main'
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package
-        path: dist/
-
-    - name: Deploy to staging environment
-      run: |
-        echo "Future: Deploy to staging environment"
-        echo "This step will require environment secrets"
-
   security-scan:
     runs-on: ubuntu-latest
     steps:
