@@ -136,6 +136,30 @@ classDiagram
 
 A system's default representation as a process is its own internal actual state. However, a system can synthesize its own composite state or set of states for publishing to the outside world. This enables building complex control systems by composing simpler, self-contained systems that expose high-level state summaries.
 
+## Project Structure
+
+```
+src/
+├── base/
+│   ├── __init__.py
+│   ├── entity.py        # Entity base class
+│   ├── device.py        # Device, Sensor, Actuator classes
+│   ├── state.py         # State type definitions
+│   └── process.py       # Process, Controller, Environment abstracts
+├── controllers/
+│   ├── __init__.py
+│   ├── pid.py           # PIDController
+│   ├── safety.py        # SafetyController
+│   ├── learning.py      # LearningController
+│   └── fixed.py         # FixedSpeedController (testing)
+├── environments/
+│   ├── __init__.py
+│   ├── hardware.py      # Hardware environment
+│   └── simulation.py    # Simulation environment
+├── system.py            # System orchestrator
+└── daemon.py            # Daemon entry point
+```
+
 ## Testing
 
 The architecture supports testing through the simulation environment. Developers can craft specific, deterministic states to test controller logic without physical hardware.
