@@ -32,7 +32,7 @@ This project values careful planning, objective analysis, and precise technical 
 
 **Gold code training.** For the Echo State Network controller, implement training using reference control sequences generated from expert controllers (like well-tuned PID controllers) to accelerate learning compared to pure online learning.
 
-**Architecture.** The system uses Entity (base class with UUID and name), Device (sensors and actuators with flexible properties), State (collections of device properties), and Process (computational units that transform states). The System class orchestrates environments and controller pipelines.
+**Architecture.** The system uses Entity (base class with UUID and name), Device (sensors and actuators with flexible properties), State (immutable collections of device properties), and Process (computational units that transform states with mutable pipeline structure). Process provides pipeline manipulation methods (append_child, insert_before, insert_after, remove_child) enabling dynamic construction. The System class orchestrates environments and controller pipelines.
 
 **Controllers.** Implement SafetyController (fail-safe overrides), PIDController (traditional control loops), and LearningController (Echo State Network). Controllers operate in sequence, with safety always last.
 

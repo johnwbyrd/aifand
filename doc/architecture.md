@@ -37,13 +37,22 @@ The `Process` class represents computational units that transform data within th
 - **Stateless execution**: No data persists between execute() calls
 - **Serial pipeline**: Child processes execute in order with state passthrough
 - **Error resilience**: Exceptions are caught, logged, and execution continues with passthrough behavior
-- **Immutable operations**: Input states are deep-copied to prevent modification
+- **Immutable data flow**: Input states are deep-copied to prevent modification
+- **Mutable structure**: Process pipeline structure can be modified for flexible construction
 - **Per-process logging**: Each process gets its own hierarchical logger
 
 **Execution behavior:**
 - If a process has no children, it executes its own `_execute_impl()` method
 - If a process has children, it executes them serially, passing each child's output as the next child's input
 - Failed processes log errors but don't abort the pipeline (critical for thermal systems)
+
+**Pipeline manipulation:**
+- `append_child(process)` - Add process to end of pipeline
+- `insert_before(target_name, process)` - Insert process before named target (raises ValueError if not found)
+- `insert_after(target_name, process)` - Insert process after named target (raises ValueError if not found)
+- `remove_child(name)` - Remove process by name (returns bool indicating success)
+
+These methods enable dynamic pipeline construction and reconfiguration, particularly useful for System classes that need to build execution pipelines based on discovered hardware or operating conditions.
 
 An `Environment` can read and modify sensors, but should only read actuators from its input state. `Simulation` environments may model virtual hardware responses, while `Hardware` environments interface with real hardware via Linux hwmon.
 
@@ -73,7 +82,7 @@ The core abstractions are fully implemented and tested:
 - **Device classes**: Sensor and Actuator with flexible property storage
 - **State class**: Immutable device collections with helper methods
 - **Process architecture**: Abstract base with Environment and Controller subclasses
-- **Comprehensive test suite**: 60 tests covering all functionality
+- **Comprehensive test suite**: Unit tests cover all functionality
 
 ### Key Design Decisions Made
 
@@ -82,6 +91,8 @@ The core abstractions are fully implemented and tested:
 **Device property validation**: Flexible properties dictionary approach maintained. Validation logic will be implemented in specific controller implementations rather than at the Device level, allowing different controllers to have different requirements.
 
 **Process configuration and discovery**: Deferred to concrete System implementations. Each System will be responsible for instantiating and configuring its process pipeline.
+
+**Process mutability**: Process structure is mutable while data flow remains immutable. This design separates concerns: States provide immutable data protection through pipelines, while Process mutability enables natural pipeline construction patterns. The decision prioritizes System construction flexibility over structural immutability, since thermal management systems typically "configure once, then run."
 
 **Performance considerations**: 
 - Deep copying of states through process pipelines is acceptable for expected device counts (5-15 temperature sensors, 3-8 fan controllers)
