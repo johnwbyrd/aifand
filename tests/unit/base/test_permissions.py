@@ -13,14 +13,14 @@ from src.aifand.base.state import State
 class MockEnvironment(Environment):
     """Test environment for permission testing."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         return states
 
 
 class MockController(Controller):
     """Base test controller for permission testing."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         return states
 
 
@@ -46,7 +46,7 @@ class LearningController(MockController):
 class SensorModifyingController(MockController):
     """Controller that tries to modify a sensor."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         if "actual" in states:
             sensor = Sensor(name="cpu_temp", properties={"value": 50.0})
             states["actual"] = states["actual"].with_device(sensor)
@@ -56,7 +56,7 @@ class SensorModifyingController(MockController):
 class ActuatorModifyingController(MockController):
     """Controller that tries to modify an actuator."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         if "actual" in states:
             actuator = Actuator(name="cpu_fan", properties={"value": 200})
             states["actual"] = states["actual"].with_device(actuator)
@@ -66,7 +66,7 @@ class ActuatorModifyingController(MockController):
 class SensorModifyingEnvironment(MockEnvironment):
     """Environment that tries to modify a sensor."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         if "actual" in states:
             sensor = Sensor(name="cpu_temp", properties={"value": 50.0})
             states["actual"] = states["actual"].with_device(sensor)
@@ -120,14 +120,14 @@ class TestDevicePermissions:
 
         # Create PID controllers that attempt modifications
         class PIDSensorModifier(PIDController):
-            def _execute_impl(self, states):
+            def _process(self, states):
                 if "actual" in states:
                     sensor = Sensor(name="cpu_temp", properties={"value": 50.0})
                     states["actual"] = states["actual"].with_device(sensor)
                 return states
 
         class PIDActuatorModifier(PIDController):
-            def _execute_impl(self, states):
+            def _process(self, states):
                 if "actual" in states:
                     actuator = Actuator(name="cpu_fan", properties={"value": 128})
                     states["actual"] = states["actual"].with_device(actuator)

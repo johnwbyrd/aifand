@@ -68,7 +68,7 @@ class Process(Entity, ABC):
             # No children - execute this process's logic
             try:
                 self._logger.debug(f"Executing process {self.name}")
-                return self._execute_impl(result_states)
+                return self._process(result_states)
             except PermissionError:
                 # Permission errors should bubble up - they're programming errors, not operational failures
                 raise
@@ -96,7 +96,7 @@ class Process(Entity, ABC):
             return result_states
 
     @abstractmethod
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Implement process-specific state transformation logic.
 
         This method is called when the process has no children and needs to
@@ -189,7 +189,7 @@ class Environment(Process, ABC):
     """
 
     @abstractmethod
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Environment-specific implementation."""
         pass
 
@@ -203,6 +203,6 @@ class Controller(Process, ABC):
     """
 
     @abstractmethod
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Controller-specific implementation."""
         pass

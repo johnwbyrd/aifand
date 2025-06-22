@@ -86,7 +86,7 @@ class State(BaseModel):
             frame_locals = frame_info.frame.f_locals
             if (
                 "self" in frame_locals
-                and hasattr(frame_locals["self"], "_execute_impl")
+                and hasattr(frame_locals["self"], "_process")
                 and hasattr(frame_locals["self"], "__class__")
             ):
                 return frame_locals["self"]

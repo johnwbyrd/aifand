@@ -15,7 +15,7 @@ from src.aifand.base.state import State
 class SimpleProcess(Process):
     """Concrete Process implementation for testing."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Test implementation that adds a test device to the 'actual' state."""
         if "actual" in states:
             test_device = Device(name="test_device", properties={"value": 42, "processed_by": self.name})
@@ -28,7 +28,7 @@ class MultiplyProcess(Process):
 
     factor: float = Field(default=2.0, description="Multiplication factor for device values")
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Multiply all device values by the factor."""
         result_states = dict(states)
 
@@ -51,7 +51,7 @@ class MultiplyProcess(Process):
 class FailingProcess(Process):
     """Process that always raises an exception."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Always raise an exception."""
         raise RuntimeError("This process always fails")
 
@@ -59,7 +59,7 @@ class FailingProcess(Process):
 class MockEnvironment(Environment):
     """Concrete Environment implementation for testing."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Test environment that adds a sensor reading."""
         if "actual" in states:
             sensor = Sensor(name="env_sensor", properties={"value": 25.0, "unit": "°C"})
@@ -70,7 +70,7 @@ class MockEnvironment(Environment):
 class MockController(Controller):
     """Concrete Controller implementation for testing."""
 
-    def _execute_impl(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Test controller that adds an actuator setting."""
         if "actual" in states:
             actuator = Actuator(name="ctrl_actuator", properties={"value": 128, "unit": "PWM"})
@@ -515,7 +515,7 @@ class TestProcessIntegration:
         ctrl = MockController(name="controller")
 
         # Create system with environment and controller
-        # When a process has children, it executes the children pipeline, not its own _execute_impl
+        # When a process has children, it executes the children pipeline, not its own _process
         system = SimpleProcess(name="system", children=[env, ctrl])
 
         states = {"actual": State()}
@@ -526,7 +526,7 @@ class TestProcessIntegration:
         # Should have devices from environment and controller
         assert actual_state.has_device("env_sensor")  # From environment
         assert actual_state.has_device("ctrl_actuator")  # From controller
-        # Should NOT have test_device because system has children (executes pipeline, not _execute_impl)
+        # Should NOT have test_device because system has children (executes pipeline, not _process)
         assert not actual_state.has_device("test_device")
 
     def test_realistic_control_loop(self):
