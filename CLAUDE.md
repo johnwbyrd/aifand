@@ -1,4 +1,4 @@
-# Claude Instructions for fanctl Project
+# Claude Instructions for aifand Project
 
 ## Working Philosophy
 
@@ -8,7 +8,7 @@ This project values careful planning, objective analysis, and precise technical 
 
 **Always plan before implementing.** Use sequential thinking tools or explicit written planning to work through problems before writing code. Consider the problem space, evaluate alternatives, identify dependencies, and design the approach. Planning prevents rework and produces better architectures.
 
-**Think through testing strategy.** Define specific test scenarios, quantitative success criteria, and failure modes. For fanctl specifically, this means creating multiple simulation environments with different thermal behaviors (reasonable and perverse) to test whether controllers remain stable or "fly off the deep end."
+**Think through testing strategy.** Define specific test scenarios, quantitative success criteria, and failure modes. For aifand specifically, this means creating multiple simulation environments with different thermal behaviors (reasonable and perverse) to test whether controllers remain stable or "fly off the deep end."
 
 **Less but better code.** Choose abstractions carefully. Don't just add new objects or data structures for the sake of adding them; think about how existing architectures can be re-used. Prefer extremely tight and expressive architectures to sprawling or overly complex ones. Simplify designs where they can be simplified. Re-use code, or bring in industry-standard libraries if needed.  Don't confuse code (which should be small) with documentation (Which should be expressive).
 

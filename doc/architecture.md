@@ -1,10 +1,10 @@
-# fanctl Architecture
+# aifand Architecture
 
-This document outlines the software architecture for `fanctl`, an adaptive thermal management system.
+This document outlines the software architecture for `aifand`, an adaptive thermal management system.
 
 ## Core Philosophy
 
-The `fanctl` architecture automatically discovers and learns the thermal properties of the hardware it manages without manual configuration. It separates pure data (`State`) from the logic that transforms it (`Process`). Complex behaviors, including safety overrides and hierarchical control, are achieved by combining simple, composable building blocks in a well-defined pipeline.
+The `aifand` architecture automatically discovers and learns the thermal properties of the hardware it manages without manual configuration. It separates pure data (`State`) from the logic that transforms it (`Process`). Complex behaviors, including safety overrides and hierarchical control, are achieved by combining simple, composable building blocks in a well-defined pipeline.
 
 ## Key Abstractions and Data Models
 
@@ -99,7 +99,7 @@ classDiagram
     class Actuator
     class State {
         <<Data Object>>
-        +device_properties: dict
+        +devices: dict
     }
     class Process {
         <<Abstract>>

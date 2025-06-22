@@ -1,74 +1,64 @@
-# fanctl Implementation Plan
+# aifand Implementation Plan
 
 ## Overview
 
-This document outlines the implementation strategy for `fanctl`, an adaptive thermal management system that operates as a standalone service and as a Python library. This plan is based on the principles and class structures defined in `doc/architecture.md`. The implementation is organized into phases, each building upon the previous phase.
+This document outlines the implementation strategy for `aifand`, an adaptive thermal management system that operates as a standalone service and as a Python library. This plan is based on the principles and class structures defined in `doc/architecture.md`. The implementation is organized into phases, each building upon the previous phase.
 
-The plan addresses multiple deployment scenarios:
-- **Standalone daemon**: Running as a systemd service
-- **Python library**: Installable module for integration with other projects
-- **Package distribution**: .deb packaging
+The plan implements the system as both a standalone daemon (via src/daemon.py) and as a Python package that can be imported by other projects. API design will emerge from the working implementation rather than being defined upfront.
 
 ---
 
-## Phase 1: Package Architecture & Module Design
+## Phase 1: Package Structure Setup
 
 ### Objective
-Establish the package structure that supports both library usage and daemon deployment.
+Establish the package structure matching the architecture defined in architecture.md.
 
 ### Tasks
 1. **Create Python Package Structure**:
-   - Set up `fanctl/` main package directory with proper `__init__.py`
-   - Create submodules: `fanctl/lib/` (library components), `fanctl/daemon/` (service components), `fanctl/cli/` (command-line interface)
-   - Establish clean import hierarchy and public API surface
+   - Set up `src/` directory as the main package location
+   - Create `src/base/` for abstract base classes (entity.py, device.py, state.py, process.py)
+   - Create `src/controllers/` for concrete controller implementations
+   - Create `src/environments/` for concrete environment implementations
+   - Add proper `__init__.py` files to all directories
 
 2. **Configure Build System**:
    - Create `pyproject.toml` with metadata, dependencies, and build configuration
-   - Define entry points for library usage and daemon execution
+   - Define entry point for daemon execution
    - Set up development dependencies and testing framework
 
-3. **Design Library API**:
-   - Define public interfaces for external projects
-   - Separate library functionality from daemon-specific concerns
-   - Create API documentation structure
-
-4. **Project Infrastructure**:
+3. **Project Infrastructure**:
    - Initialize testing framework (pytest)
    - Set up continuous integration
    - Create development environment configuration
 
 ---
 
-## Phase 2: Foundational Data Models and Library API
+## Phase 2: Core Abstractions Implementation
 
 ### Objective
-Implement the core data structures and abstract base classes with proper packaging and public API design.
+Implement the core data structures and abstract base classes in src/base/.
 
 ### Tasks
-1. **Define `Entity` Base Class**:
+1. **Implement `Entity` Base Class** (src/base/entity.py):
    - Create `Entity` class with UUID and name properties
    - Implement serialization support through pydantic BaseModel inheritance
    - Ensure consistent identification across system components
 
-2. **Define `Device` Classes**:
+2. **Implement `Device` Classes** (src/base/device.py):
    - Create the base `Device` class with flexible `properties` dictionary
    - Create the `Sensor` and `Actuator` subclasses with appropriate specializations
    - Implement device discovery and instantiation mechanisms
 
-3. **Define `State` Type**:
-   - Establish the `State` as a type alias for device property collections
+3. **Implement `State` Type** (src/base/state.py):
+   - Define `State` as a data structure for device property collections
    - Implement state serialization, deserialization, and validation
    - Create state manipulation and query utilities
 
-4. **Define `Process` Abstract Base Class**:
+4. **Implement `Process` Abstract Base Class** (src/base/process.py):
    - Create the `Process` ABC with abstract `execute` method
-   - Define the `Environment` and `Controller` subclasses of `Process`
+   - Define the `Environment` and `Controller` abstract subclasses
    - Implement process pipeline and execution framework
 
-5. **Public API**:
-   - Define interfaces for external projects
-   - Create API documentation with usage examples
-   - Implement backward compatibility considerations
 
 ---
 
@@ -78,12 +68,12 @@ Implement the core data structures and abstract base classes with proper packagi
 Create a minimal, working `System` for integration testing. Implement multiple simulation environments to test controller behavior under various conditions.
 
 ### Tasks
-1. **Implement `System` Process**:
+1. **Implement `System` Process** (src/system.py):
    - Create `System` class with state management and controller pipeline
    - Implement main execution loop with error handling
    - Add support for named states and context management
 
-2. **Implement Simulation Environments**:
+2. **Implement Simulation Environments** (src/environments/simulation.py):
    - **LinearThermal**: Simple linear heat transfer model (`temp_change = (heat_input - heat_dissipation) / thermal_mass`)
    - **ThermalMass**: Multi-zone model with thermal inertia and time delays
    - **RealisticSystem**: Computer thermal model with CPU load-based heat generation
@@ -91,7 +81,7 @@ Create a minimal, working `System` for integration testing. Implement multiple s
    - **FailureSimulation**: Hardware failure modes (sensor dropouts, actuator failures)
    - **ChaosSystem**: Non-linear, chaotic thermal behavior with discontinuities
 
-3. **Implement Basic Controllers**:
+3. **Implement Basic Controllers** (src/controllers/fixed.py):
    - Create `FixedSpeedController` for initial testing
    - Implement state transformation and validation
    - Add controller configuration
@@ -111,19 +101,19 @@ Create a minimal, working `System` for integration testing. Implement multiple s
 Implement the primary controllers and test them against the simulation environments to validate stability and performance.
 
 ### Tasks
-1. **Implement `SafetyController`**:
+1. **Implement `SafetyController`** (src/controllers/safety.py):
    - Create controller that monitors actual state against critical thresholds
    - Implement fail-safe logic that overrides other controllers when triggered
    - Add configurable safety margins and response strategies
    - Ensure safety controller executes last in pipeline
 
-2. **Implement `PIDController`**:
+2. **Implement `PIDController`** (src/controllers/pid.py):
    - Create configurable PID controller with tunable parameters
    - Support multiple independent control loops
    - Implement setpoint tracking from desired state
    - Add anti-windup and derivative filtering
 
-3. **Implement `LearningController` with Echo State Network**:
+3. **Implement `LearningController` with Echo State Network** (src/controllers/learning.py):
    - Create ESN-based controller using reservoir computing
    - Implement Recursive Least Squares (RLS) for online learning
    - Support multi-input, multi-output control scenarios
@@ -149,7 +139,7 @@ Implement the primary controllers and test them against the simulation environme
 Connect the system to physical hardware through the Linux hwmon interface.
 
 ### Tasks
-1. **Implement `Hardware` Environment**:
+1. **Implement `Hardware` Environment** (src/environments/hardware.py):
    - Create `Hardware` class with hwmon filesystem integration
    - Implement automatic discovery of available sensors and actuators
    - Add device enumeration and capability detection
@@ -175,32 +165,37 @@ Connect the system to physical hardware through the Linux hwmon interface.
 
 ---
 
-## Phase 6: Service Integration & Deployment
+## Phase 6: Daemon Implementation
 
 ### Objective
-Make the system runnable as a systemd service with system serialization support.
+Implement the daemon entry point and make the system runnable as a systemd service.
 
 ### Tasks
-1. **System Serialization**:
+1. **Implement Daemon Entry Point** (src/daemon.py):
+   - Create main executable that instantiates and runs the System
+   - Implement signal handling for graceful shutdown
+   - Add configuration loading from files
+   - Implement daemon behavior and PID management
+
+2. **System Serialization**:
    - Implement System.save() and System.load() methods
-   - Serialize system state and configuration to JSON/YAML files
+   - Serialize system state and configuration to JSON files
    - Support saving/loading of devices, controllers, and current states
    - Add configuration validation and error reporting
 
-2. **Service Infrastructure**:
-   - Create main executable script with command-line interface
-   - Implement daemon behavior with signal handling and PID management
+3. **Service Infrastructure**:
    - Add systemd integration with service files and dependencies
    - Implement graceful shutdown and restart capabilities
+   - Configure logging to systemd journal
 
 3. **User and Permissions**:
-   - Create dedicated user and group for fanctl service
+   - Create dedicated user and group for aifand service
    - Set appropriate file permissions and access controls
    - Implement privilege separation
 
 4. **Operational Support**:
    - Integrate with systemd journal for logging
-   - Add configuration directory structure (`/etc/fanctl/`)
+   - Add configuration directory structure (`/etc/aifand/`)
    - Implement service status monitoring
    - Create installation and uninstallation procedures
 
@@ -215,7 +210,7 @@ Make the system runnable as a systemd service with system serialization support.
 ## Phase 7: Distribution & Packaging
 
 ### Objective
-Create distribution packages for installation, upgrade, and removal of fanctl.
+Create distribution packages for installation, upgrade, and removal of aifand.
 
 ### Tasks
 1. **Debian Package Creation**:
@@ -256,16 +251,17 @@ Add extended features, documentation, and support for complex deployment scenari
    - Add distributed thermal management capabilities
    - Implement system discovery and automatic configuration
 
-2. **Developer Documentation**:
+2. **API Design and Documentation**:
+   - Design public API based on the working implementation
    - Create developer documentation with API references
    - Write tutorials for creating custom controllers and environments
-   - Provide examples and use cases
+   - Provide examples and use cases for library usage
    - Set up auto-generated API documentation from docstrings
 
 3. **Library Integration Support**:
    - Create examples for external project integration
-   - Add library usage patterns and documentation
-   - Implement backward compatibility testing and versioning
+   - Add library usage patterns based on actual implementation
+   - Implement versioning strategy
    - Create integration templates
 
 4. **Monitoring**:
@@ -292,9 +288,9 @@ Add extended features, documentation, and support for complex deployment scenari
 - **Package Tests** (Phase 7): Installation, upgrade, and removal procedures
 
 ### Documentation Strategy
-- **API Documentation** (Phase 2): Library interfaces and usage examples
 - **User Documentation** (Phase 6): Configuration, deployment, and operation
 - **Developer Documentation** (Phase 8): Extension and customization guides
+- **API Documentation** (After Phase 8): Library interfaces emerge from working implementation
 
 ### Security Considerations
 - **Design Security** (Phase 1): Architecture and API design
@@ -316,4 +312,4 @@ Each phase includes completion criteria:
 - **Integration Requirements**: Compatibility with existing systems and workflows
 - **Documentation Requirements**: User and developer documentation
 
-The plan provides for fanctl deployment as both a standalone thermal management service and as a library component for integration with other projects, with packaging and distribution capabilities.
+The plan provides for aifand deployment as both a standalone thermal management service and as a library component for integration with other projects, with packaging and distribution capabilities.
