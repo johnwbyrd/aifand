@@ -51,7 +51,7 @@ jobs:
         pytest tests/ -v --cov=src/aifand --cov-report=term-missing --cov-report=xml
 
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
@@ -82,7 +82,7 @@ jobs:
         twine check dist/*
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-package
         path: dist/
@@ -116,7 +116,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: python-package
         path: dist/
@@ -158,7 +158,7 @@ jobs:
         echo "✓ No security issues found in our code"
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-reports
