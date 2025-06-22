@@ -17,7 +17,10 @@ class Process(Entity, ABC):
     A Process represents a computational unit that transforms states within the system.
     Processes can contain child processes that execute in serial order, forming
     execution pipelines. Each process receives a dictionary of named states and
-    produces a transformed dictionary of states.
+    produces a transformed dictionary of states.  Critically, a process is stateless.
+    It does not maintain any internal state between calls to execute(). Instead, it
+    operates on the input states provided to execute() and returns a new dictionary
+    of states as output.
 
     Key characteristics:
     - Stateless: No data persists between execute() calls
