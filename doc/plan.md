@@ -8,51 +8,13 @@ The plan implements the system as both a standalone daemon and as a Python packa
 
 ---
 
-## Phase 2: Core Abstractions Implementation ✅ COMPLETED
-
-### Objective
-Implement the core data structures and abstract base classes in src/aifand/base/.
-
-### Status: COMPLETED
-All core abstractions implemented and fully tested (60 passing tests).
-
-### Completed Tasks
-1. **Implemented `Device` Classes** (src/aifand/base/device.py):
-   ✅ Created the base `Device` class with flexible `properties` dictionary
-   ✅ Created the `Sensor` and `Actuator` subclasses 
-   ✅ Established standard property naming conventions for thermal management
-   ✅ Full serialization/deserialization support with pydantic
-   ⏸️ Device discovery mechanisms deferred to concrete Environment implementations
-
-2. **Implemented `State` Type** (src/aifand/base/state.py):
-   ✅ Defined `State` as immutable collection of devices indexed by name
-   ✅ Implemented state serialization, deserialization, and validation
-   ✅ Created state manipulation utilities (with_device, without_device, etc.)
-   ✅ Helper methods for device access and query
-
-3. **Implemented `Process` Abstract Base Class** (src/aifand/base/process.py):
-   ✅ Created the `Process` ABC with abstract `_execute_impl` method
-   ✅ Defined the `Environment` and `Controller` abstract subclasses
-   ✅ Implemented process pipeline with serial execution
-   ✅ Added error resilience (catch, log, continue with passthrough)
-   ✅ Deep copy input states to prevent modification
-   ✅ Per-process logging with hierarchical logger names
-
-### Key Implementation Details
-- **Error handling**: Never abort pipelines; failed processes log errors and continue
-- **Performance**: Deep copying acceptable for expected device counts (5-15 sensors, 3-8 actuators)
-- **State management**: Immutable with copy-on-write semantics
-- **Logging**: Each process gets `module.Class.name` logger hierarchy
-
----
-
 ## Phase 3: Core System Implementation
 
 ### Objective
 Create a minimal, working `System` for integration testing. Implement multiple simulation environments to test controller behavior under various conditions.
 
 ### Status: READY TO START
-Phase 2 foundation complete. System will handle state persistence between executions (unlike stateless Processes).
+Core abstractions foundation complete. System will handle state persistence between executions (unlike stateless Processes).
 
 ### Updated Tasks
 1. **Implement `System` Process** (src/aifand/base/system.py):
@@ -301,7 +263,7 @@ Add extended features, documentation, and support for complex deployment scenari
 ## Cross-Cutting Concerns
 
 ### Testing Strategy
-- **Unit Tests** (Phase 2): ✅ COMPLETED - Core data models and individual components with pytest (60 tests passing)
+- **Unit Tests**: COMPLETED - Core data models and individual components with pytest
 - **Integration Tests** (Phase 3): System pipeline and controller interactions  
 - **Simulation Tests** (Phase 4): Controller behavior under reasonable and perverse thermal conditions
 - **Protocol Tests** (Phase 5): Multi-protocol serialization and network communication
@@ -361,6 +323,20 @@ The plan provides for aifand deployment as both a standalone thermal management 
 - Decision: Never abort thermal control pipelines on process failures
 - Rationale: Thermal systems must continue operating even with component failures
 - Implementation: Catch all exceptions, log with full traceback, continue with state passthrough
+- Exception: PermissionError bubbles up as programming errors, not operational failures
+
+**Device Permission System**:
+- Decision: Implement runtime permission validation using call stack inspection
+- Rationale: Thermal management requires strict separation between sensor reading and actuator control
+- Implementation: Class-based permission matrix with ordered precedence checking
+- Rules: Environment can modify Sensors+Actuators, Controller can modify Actuators only
+- Security: Prevents Controllers from corrupting sensor readings while allowing proper thermal control
+
+**Process Pipeline Manipulation**:
+- Decision: Make Process structure mutable with pipeline manipulation methods
+- Rationale: System construction requires dynamic pipeline building based on discovered hardware
+- Implementation: append_child(), insert_before(), insert_after(), remove_child()
+- Error handling: ValueError for target not found, boolean returns for optional operations
 
 ### Next Phase Considerations
 

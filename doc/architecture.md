@@ -45,6 +45,7 @@ The `Process` class represents computational units that transform data within th
 - If a process has no children, it executes its own `_execute_impl()` method
 - If a process has children, it executes them serially, passing each child's output as the next child's input
 - Failed processes log errors but don't abort the pipeline (critical for thermal systems)
+- PermissionError exceptions bubble up as programming errors (unlike operational failures)
 
 **Pipeline manipulation:**
 - `append_child(process)` - Add process to end of pipeline
@@ -53,6 +54,9 @@ The `Process` class represents computational units that transform data within th
 - `remove_child(name)` - Remove process by name (returns bool indicating success)
 
 These methods enable dynamic pipeline construction and reconfiguration, particularly useful for System classes that need to build execution pipelines based on discovered hardware or operating conditions.
+
+**Device modification permissions:**
+The system enforces thermal management domain rules through runtime permission validation. Environment processes can read and modify both Sensors and Actuators (hardware interface responsibility), while Controller processes can only modify Actuators (decision-making responsibility). This separation prevents Controllers from corrupting sensor readings while allowing proper thermal control. Permission checking uses call stack inspection to identify the modifying process and validates against a class-based permission matrix with inheritance support.
 
 An `Environment` can read and modify sensors, but should only read actuators from its input state. `Simulation` environments may model virtual hardware responses, while `Hardware` environments interface with real hardware via Linux hwmon.
 
@@ -80,9 +84,11 @@ The core abstractions are fully implemented and tested:
 
 - **Entity base class**: UUID identification, arbitrary properties, full serialization
 - **Device classes**: Sensor and Actuator with flexible property storage
-- **State class**: Immutable device collections with helper methods
+- **State class**: Immutable device collections with helper methods and permission validation
 - **Process architecture**: Abstract base with Environment and Controller subclasses
-- **Comprehensive test suite**: Unit tests cover all functionality
+- **Permission system**: Runtime validation enforcing thermal management domain rules
+- **Pipeline manipulation**: Dynamic process pipeline construction and reconfiguration
+- **Comprehensive test suite**: Unit tests cover all functionality including permission scenarios
 
 ### Key Design Decisions Made
 
@@ -100,7 +106,9 @@ The core abstractions are fully implemented and tested:
 - Optimization strategy: "gentleman's agreement" to pass minimal state sets rather than premature optimization
 - Python's `copy.deepcopy()` creates real copies, not reference updates, but performance impact expected to be negligible at planned scale
 
-**Error handling philosophy**: Never abort thermal control pipelines. Failed processes log errors and continue with passthrough behavior to maintain system stability.
+**Error handling philosophy**: Never abort thermal control pipelines. Failed processes log errors and continue with passthrough behavior to maintain system stability. PermissionError exceptions are treated as programming errors and bubble up immediately, distinguishing them from operational failures.
+
+**Device permission system**: Runtime validation enforces thermal management domain separation using call stack inspection to identify modifying processes. The permission matrix uses ordered precedence with inheritance support, allowing Environment processes to modify both device types while restricting Controller processes to actuator-only modifications. This prevents sensor corruption while enabling proper thermal control patterns.
 
 ## Protocol Layer Architecture
 

@@ -6,7 +6,7 @@ This project values careful planning, objective analysis, and precise technical 
 
 ## Planning and Design Requirements
 
-**Always plan before implementing.** Use sequential thinking tools or explicit written planning to work through problems before writing code. Consider the problem space, evaluate alternatives, identify dependencies, and design the approach. Planning prevents rework and produces better architectures.
+**Always plan before implementing.** Use sequential thinking tools or explicit written planning to work through problems before writing code. Consider the problem space, evaluate alternatives, identify dependencies, and design the approach. Planning prevents rework and produces better architectures. Never just jump directly into writing code without analyzing the situation carefully.
 
 **Think through testing strategy.** Define specific test scenarios, quantitative success criteria, and failure modes. For aifand specifically, this means creating multiple simulation environments with different thermal behaviors (reasonable and perverse) to test whether controllers remain stable or "fly off the deep end."
 
@@ -18,7 +18,7 @@ This project values careful planning, objective analysis, and precise technical 
 
 **Write in prose paragraphs for complex topics.** Bullet points fragment information and make relationships unclear. Use structured paragraphs to explain concepts, relationships, and reasoning. Reserve bullet points for simple lists of items or tasks.
 
-**No emojis.** Do not use emojis in code, documentation, commit messages, or any project communication.
+**No emojis.** Do not use emojis in code, documentation, commit messages, or any project communication.  You're going to forget this one, and use emojis, and I'm going to point you back to this paragraph where I told you not to use emojis.
 
 **Be specific about implementations.** Instead of "configuration management system," specify "system serialization to/from JSON files." Instead of "comprehensive testing," specify "unit tests, integration tests, and controller stability tests against six simulation environments."
 
