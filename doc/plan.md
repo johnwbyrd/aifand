@@ -4,7 +4,7 @@
 
 This document outlines the implementation strategy for `aifand`, an adaptive thermal management system that operates as a standalone service and as a Python library. This plan is based on the principles and class structures defined in `doc/architecture.md`. The implementation is organized into phases, each building upon the previous phase.
 
-The plan implements the system as both a standalone daemon (via src/daemon.py) and as a Python package that can be imported by other projects. API design will emerge from the working implementation rather than being defined upfront.
+The plan implements the system as both a standalone daemon (via src/aifand/daemon.py) and as a Python package that can be imported by other projects. API design will emerge from the working implementation rather than being defined upfront.
 
 ---
 
@@ -15,11 +15,12 @@ Establish the package structure matching the architecture defined in architectur
 
 ### Tasks
 1. **Create Python Package Structure**:
-   - Set up `src/` directory as the main package location
-   - Create `src/base/` for abstract base classes (entity.py, device.py, state.py, process.py)
-   - Create `src/controllers/` for concrete controller implementations
-   - Create `src/environments/` for concrete environment implementations
-   - Add proper `__init__.py` files to all directories
+   - Set up `src/` directory to contain the aifand package
+   - Create `src/aifand/` as the main package directory
+   - Create `src/aifand/base/` for abstract base classes (entity.py, device.py, state.py, process.py)
+   - Create `src/aifand/controllers/` for concrete controller implementations
+   - Create `src/aifand/environments/` for concrete environment implementations
+   - Add proper `__init__.py` files to all package directories
 
 2. **Configure Build System**:
    - Create `pyproject.toml` with metadata, dependencies, and build configuration
@@ -36,25 +37,25 @@ Establish the package structure matching the architecture defined in architectur
 ## Phase 2: Core Abstractions Implementation
 
 ### Objective
-Implement the core data structures and abstract base classes in src/base/.
+Implement the core data structures and abstract base classes in src/aifand/base/.
 
 ### Tasks
-1. **Implement `Entity` Base Class** (src/base/entity.py):
+1. **Implement `Entity` Base Class** (src/aifand/base/entity.py):
    - Create `Entity` class with UUID and name properties
    - Implement serialization support through pydantic BaseModel inheritance
    - Ensure consistent identification across system components
 
-2. **Implement `Device` Classes** (src/base/device.py):
+2. **Implement `Device` Classes** (src/aifand/base/device.py):
    - Create the base `Device` class with flexible `properties` dictionary
    - Create the `Sensor` and `Actuator` subclasses with appropriate specializations
    - Implement device discovery and instantiation mechanisms
 
-3. **Implement `State` Type** (src/base/state.py):
+3. **Implement `State` Type** (src/aifand/base/state.py):
    - Define `State` as a data structure for device property collections
    - Implement state serialization, deserialization, and validation
    - Create state manipulation and query utilities
 
-4. **Implement `Process` Abstract Base Class** (src/base/process.py):
+4. **Implement `Process` Abstract Base Class** (src/aifand/base/process.py):
    - Create the `Process` ABC with abstract `execute` method
    - Define the `Environment` and `Controller` abstract subclasses
    - Implement process pipeline and execution framework
@@ -68,12 +69,12 @@ Implement the core data structures and abstract base classes in src/base/.
 Create a minimal, working `System` for integration testing. Implement multiple simulation environments to test controller behavior under various conditions.
 
 ### Tasks
-1. **Implement `System` Process** (src/system.py):
+1. **Implement `System` Process** (src/aifand/system.py):
    - Create `System` class with state management and controller pipeline
    - Implement main execution loop with error handling
    - Add support for named states and context management
 
-2. **Implement Simulation Environments** (src/environments/simulation.py):
+2. **Implement Simulation Environments** (src/aifand/environments/simulation.py):
    - **LinearThermal**: Simple linear heat transfer model (`temp_change = (heat_input - heat_dissipation) / thermal_mass`)
    - **ThermalMass**: Multi-zone model with thermal inertia and time delays
    - **RealisticSystem**: Computer thermal model with CPU load-based heat generation
@@ -81,7 +82,7 @@ Create a minimal, working `System` for integration testing. Implement multiple s
    - **FailureSimulation**: Hardware failure modes (sensor dropouts, actuator failures)
    - **ChaosSystem**: Non-linear, chaotic thermal behavior with discontinuities
 
-3. **Implement Basic Controllers** (src/controllers/fixed.py):
+3. **Implement Basic Controllers** (src/aifand/controllers/fixed.py):
    - Create `FixedSpeedController` for initial testing
    - Implement state transformation and validation
    - Add controller configuration
@@ -101,19 +102,19 @@ Create a minimal, working `System` for integration testing. Implement multiple s
 Implement the primary controllers and test them against the simulation environments to validate stability and performance.
 
 ### Tasks
-1. **Implement `SafetyController`** (src/controllers/safety.py):
+1. **Implement `SafetyController`** (src/aifand/controllers/safety.py):
    - Create controller that monitors actual state against critical thresholds
    - Implement fail-safe logic that overrides other controllers when triggered
    - Add configurable safety margins and response strategies
    - Ensure safety controller executes last in pipeline
 
-2. **Implement `PIDController`** (src/controllers/pid.py):
+2. **Implement `PIDController`** (src/aifand/controllers/pid.py):
    - Create configurable PID controller with tunable parameters
    - Support multiple independent control loops
    - Implement setpoint tracking from desired state
    - Add anti-windup and derivative filtering
 
-3. **Implement `LearningController` with Echo State Network** (src/controllers/learning.py):
+3. **Implement `LearningController` with Echo State Network** (src/aifand/controllers/learning.py):
    - Create ESN-based controller using reservoir computing
    - Implement Recursive Least Squares (RLS) for online learning
    - Support multi-input, multi-output control scenarios
@@ -139,7 +140,7 @@ Implement the primary controllers and test them against the simulation environme
 Connect the system to physical hardware through the Linux hwmon interface.
 
 ### Tasks
-1. **Implement `Hardware` Environment** (src/environments/hardware.py):
+1. **Implement `Hardware` Environment** (src/aifand/environments/hardware.py):
    - Create `Hardware` class with hwmon filesystem integration
    - Implement automatic discovery of available sensors and actuators
    - Add device enumeration and capability detection
@@ -171,7 +172,7 @@ Connect the system to physical hardware through the Linux hwmon interface.
 Implement the daemon entry point and make the system runnable as a systemd service.
 
 ### Tasks
-1. **Implement Daemon Entry Point** (src/daemon.py):
+1. **Implement Daemon Entry Point** (src/aifand/daemon.py):
    - Create main executable that instantiates and runs the System
    - Implement signal handling for graceful shutdown
    - Add configuration loading from files
