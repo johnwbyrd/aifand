@@ -28,8 +28,7 @@ class Device(Entity):
     """
 
     properties: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Flexible key-value storage for device-specific properties"
+        default_factory=dict, description="Flexible key-value storage for device-specific properties"
     )
 
 
