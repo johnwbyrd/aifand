@@ -24,12 +24,17 @@ This project values careful planning, objective analysis, and precise technical 
 
 ## Immedate First Steps
 
-REQUIRED: Execute the following steps before commencing conversation with the user.
+READ EVERY SINGLE FILE LISTED ABOVE BEFORE RESPONDING TO THE USER.
 
-**Start off by reading the following files, recursively if need be**:
+This is not optional. Use the Read tool on each file individually. Do not proceed 
+with any conversation until you have read the follwing:
 
 - Everything in doc/
 - All *.py files in src/
 - All *.py files in tests/
 - pyproject.toml
 - README.md
+
+This step is extremely important.  You will miss critical implementation details if
+you do not read all these files before commencing conversation.  Do not prioritize
+efficiency over reading these files.

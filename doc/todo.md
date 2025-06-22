@@ -6,6 +6,31 @@ This document outlines the remaining implementation tasks for `aifand`.
 
 ---
 
+## System Implementation
+
+### Objective
+Create the System class for coordinating multiple Pipelines in complex thermal management scenarios.
+
+### Tasks
+1. **Implement `System` Process** (src/aifand/base/system.py):
+   - Create `System` class extending Process for multi-Pipeline coordination
+   - Support both sequential and parallel Pipeline execution models
+   - Implement Pipeline management: add, remove, configure
+   - Add comprehensive status aggregation across managed Pipelines
+
+2. **System Execution Models**:
+   - **Parallel mode**: Concurrent Pipeline execution with result aggregation
+   - **Sequential mode**: Ordered Pipeline execution for dependent thermal zones
+   - **Mixed mode**: Parallel groups with sequential group execution
+   - Resource coordination and thermal policy management across Pipelines
+
+3. **System Testing**:
+   - Multi-Pipeline coordination val idation
+   - Parallel vs sequential execution testing
+   - Resource contention and conflict resolution
+   - Hierarchical System composition (Systems containing Systems)
+
+---
 
 ## Simulation Environments
 
@@ -49,32 +74,6 @@ Implement fundamental controllers for Pipeline testing and validation.
    - Quantitative metrics: overshoot, settling time, oscillation detection
    - Test scenarios: step response, disturbance rejection, setpoint tracking
    - Data collection: time series of sensor/actuator values, performance metrics
-
----
-
-## System Implementation
-
-### Objective
-Create the System class for coordinating multiple Pipelines in complex thermal management scenarios.
-
-### Tasks
-1. **Implement `System` Process** (src/aifand/base/system.py):
-   - Create `System` class extending Process for multi-Pipeline coordination
-   - Support both sequential and parallel Pipeline execution models
-   - Implement Pipeline management: add, remove, configure
-   - Add comprehensive status aggregation across managed Pipelines
-
-2. **System Execution Models**:
-   - **Parallel mode**: Concurrent Pipeline execution with result aggregation
-   - **Sequential mode**: Ordered Pipeline execution for dependent thermal zones
-   - **Mixed mode**: Parallel groups with sequential group execution
-   - Resource coordination and thermal policy management across Pipelines
-
-3. **System Testing**:
-   - Multi-Pipeline coordination validation
-   - Parallel vs sequential execution testing
-   - Resource contention and conflict resolution
-   - Hierarchical System composition (Systems containing Systems)
 
 ---
 
