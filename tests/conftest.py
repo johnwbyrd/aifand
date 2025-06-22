@@ -1,6 +1,7 @@
-import pytest
+from typing import Any, Dict
 from uuid import UUID, uuid4
-from typing import Dict, Any
+
+import pytest
 
 
 @pytest.fixture

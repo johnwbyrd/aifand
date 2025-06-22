@@ -1,0 +1,141 @@
+name: Main CI - Production Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run code formatting check
+      run: |
+        ruff format --check .
+
+    - name: Run linting
+      run: |
+        ruff check .
+
+    - name: Run type checking
+      run: |
+        mypy src/
+
+    - name: Run full test suite
+      run: |
+        pytest tests/ -v --cov=src/aifand --cov-report=term-missing --cov-report=xml
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  build-package:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build Python package
+      run: |
+        python -m build
+
+    - name: Verify package integrity
+      run: |
+        twine check dist/*
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package
+        path: dist/
+
+  build-deb:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Debian build tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y debhelper devscripts build-essential
+
+    - name: Create Debian package structure
+      run: |
+        # This will be implemented when we create debian/ directory
+        echo "Debian package building placeholder"
+        echo "Will create .deb package for aifand daemon"
+
+    - name: Upload Debian artifacts (placeholder)
+      run: |
+        echo "Future: Upload .deb files for apt repository"
+
+  deploy-staging:
+    needs: [build-package, build-deb]
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package
+        path: dist/
+
+    - name: Deploy to staging environment
+      run: |
+        echo "Future: Deploy to staging environment"
+        echo "This step will require environment secrets"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run security scan
+      run: |
+        pip install safety bandit
+        # Scan dependencies for known vulnerabilities
+        safety check
+        # Scan code for security issues
+        bandit -r src/
