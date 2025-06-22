@@ -31,20 +31,34 @@ A `State` represents a snapshot of device properties at a specific moment, imple
 
 ### Process
 
-The `Process` class represents computational units that transform data within the system. Processes receive a dictionary of named states (e.g., "actual", "desired") and return a transformed dictionary of states. Each process can contain an ordered list of child processes that execute serially to form execution pipelines.
+The `Process` class represents computational units that transform data within the system. Processes support two execution modes: immediate execution via `execute()` for stateless transformations, and timing-driven execution via `start()` for autonomous thermal control loops. This design enables both simple transformations (Controllers, Environments) and complex coordination (Pipeline, System).
 
-**Key characteristics implemented:**
-- **Stateless execution**: No data persists between execute() calls
+**Immediate Execution Mode:**
+- **Stateless operation**: `execute()` receives dictionary of named states, returns transformed states
 - **Serial pipeline**: Child processes execute in order with state passthrough
-- **Error resilience**: Exceptions are caught, logged, and execution continues with passthrough behavior
 - **Immutable data flow**: Input states are deep-copied to prevent modification
-- **Mutable structure**: Process pipeline structure can be modified for flexible construction
+- **Error resilience**: Exceptions caught, logged, execution continues with passthrough behavior
+- **Pipeline manipulation**: Dynamic child addition, insertion, and removal
 - **Per-process logging**: Each process gets its own hierarchical logger
+
+**Timing-Driven Execution:**
+- **Autonomous operation**: `start()` method runs timing loop until `stop()` called
+- **Template method pattern**: Overridable methods define timing and execution strategies
+- **Coordination hooks**: Before/after process hooks enable parent-child communication
+- **Graceful shutdown**: Responsive stop mechanism with cleanup
+
+**Timing Infrastructure (Optional):**
+Process subclasses can implement timing-driven execution by overriding these methods:
+- `_calculate_next_tick_time()`: When should the next execution occur?
+- `_select_processes_to_execute()`: Which child processes are ready to execute?
+- `_execute_selected_processes()`: How should selected processes be executed?
+- `_before_process()` / `_after_process()`: Coordination hooks around execution
+- `_before_child_process()` / `_after_child_process()`: Hooks around child execution
 
 **Execution behavior:**
 - If a process has no children, it executes its own `_process()` method
-- If a process has children, it executes them serially, passing each child's output as the next child's input
-- Failed processes log errors but don't abort the pipeline (critical for thermal systems)
+- If a process has children, execution strategy depends on timing implementation
+- Failed processes log errors but don't abort thermal control (critical for safety)
 - PermissionError exceptions bubble up as programming errors (unlike operational failures)
 
 **Pipeline manipulation:**
@@ -64,73 +78,120 @@ A `Controller` can read and modify actuators, but should only read sensors from 
 
 ### Pipeline
 
-The `Pipeline` class represents a sequential execution unit that processes thermal control through Environment → Controllers stages. It maintains named states including current system state ("actual") and target state ("desired"). During each update cycle, the pipeline executes its stages in sequence, allowing controllers to transform states toward desired outcomes. Pipeline manages a single logical control flow, such as CPU thermal management or GPU thermal management.
+The `Pipeline` class implements unified timing coordination for thermal control through Environment → Controllers stages. Pipeline extends Process with timing-driven execution using a unified timing strategy where all children execute together at the same interval, preserving serial execution order and state flow. Pipeline manages a single logical control flow, such as CPU thermal management or GPU thermal management.
 
-Pipeline provides state management and context handling for named states, configuration loading and process instantiation, and update loop timing with configurable intervals (typically ~100ms, not hard real-time). The sequential execution follows the Environment followed by Controllers pattern.
+**Unified Timing Strategy:**
+- All children execute serially at pipeline interval (default 100ms)
+- Maintains Environment → Controllers execution order
+- Single shared interval ensures coordinated thermal control
+- State flows serially through pipeline stages
+- Preserves existing thermal control patterns
 
-Pipelines operate standalone for single control flows or under Systems for coordinated multi-pipeline operation. Because a pipeline is itself a process, it can be included within higher-level systems for multi-layered architectures.
+**Timing Implementation:**
+Pipeline implements the Process timing infrastructure for unified execution:
+- `_calculate_next_tick_time()`: Returns next execution time based on pipeline interval
+- `_select_processes_to_execute()`: Returns all children for unified execution  
+- `_execute_selected_processes()`: Executes children as serial pipeline
 
-Pipeline uses a modulo-based timing approach with configurable intervals (default 100ms). The pipeline calculates next execution time as `start_time + (execution_count * interval)` and sleeps for the remainder, ensuring consistent intervals regardless of execution duration. This approach remains portable across platforms without requiring OS-specific timer mechanisms.
+**State Management:**
+- Maintains `states: Dict[str, State]` field with persistent states between executions
+- Supports both autonomous timing-driven execution and embedded Process execution
+- In autonomous mode, repeatedly executes pipeline and updates persistent states
+- In embedded mode, processes input states from parent System
 
-Pipeline maintains a `states: Dict[str, State]` field containing named states that persist between timer executions. Pipeline supports two execution modes: autonomous timing-driven execution via `start()` method for standalone thermal control, and standard Process execution when embedded in larger Systems. In autonomous mode, Pipeline repeatedly calls `self.execute(self.states)` and updates persistent states with results. In embedded mode, Pipeline behaves identically to other Processes - persistent states are ignored and execute() processes input states from the parent System.
+**Configuration and Conventions:**
+- Uses nanosecond time units with `interval_ns` field and `time.time_ns()` scheduling
+- Modulo-based timing ensures consistent intervals regardless of execution duration  
+- Follows Environment → Controllers convention with helper methods `set_environment()` and `add_controller()`
+- Overrideable `get_time()` method supports alternative time sources
 
-Pipeline uses nanosecond time units with `interval_ns` field (default 100ms) and `time.time_ns()` for scheduling. The `get_time()` method can be overridden for alternative time sources like GPS or NTP. Timing fields are serialized for remote monitoring and debugging.
-
-Pipeline follows the convention of one Environment followed by Controllers, though this is not enforced as a hard rule. Helper methods like `set_environment()` and `add_controller()` guide users toward the common pattern while preserving flexibility for composition patterns and future use cases.
-
-Devices include `timestamp` (nanosecond timestamp from `time.time_ns()`) and `quality` fields in their properties to track operational state. Quality uses extensible strings with documented standard values ("valid", "stale", "failed", "unavailable"). Only Environment processes update sensor timestamps, while computed devices receive timestamps when calculated. This enables sophisticated failure handling and safety strategies.
-
-The immutable State design and deep copying in Process execution naturally handles concurrent access. Timer execution in background threads operates safely because states are immutable and dict assignment is atomic in Python.
+**Quality and Safety:**
+- Devices include `timestamp` and `quality` fields for operational state tracking
+- Only Environment processes update sensor timestamps and quality
+- Immutable State design with deep copying ensures safe execution
+- Error resilience prevents thermal control loop interruption
 
 ### System
 
-The `System` class serves as a top-level execution engine that manages multiple Pipelines, providing coordination and aggregation across independent thermal control flows. System executes Pipelines sequentially or in parallel, enabling management of complex multi-zone thermal environments such as multiple CPUs, GPUs, or distributed server farms.
+The `System` class implements independent timing coordination for multiple thermal control flows. System extends Process with timing-driven execution using an independent timing strategy where children execute when their individual timing requirements are met, enabling coordination across thermal zones with different update rates and thermal characteristics.
 
-System contains and orchestrates multiple independent Pipeline instances, running Pipelines concurrently for independent thermal zones while combining and summarizing outputs from multiple Pipelines. The system provides comprehensive status across all managed thermal control flows and coordinates timing, resource allocation, or thermal policies across Pipelines as needed.
+**Independent Timing Strategy:**
+- Each child process operates on its own preferred interval
+- Children execute when ready, not in predetermined order
+- Shared state coordination through persistent states
+- Parent-child communication via coordination hooks
+- Enables thermal zones with different response characteristics
 
-The architecture supports several operational patterns. In independent zone configurations, each Pipeline manages its own thermal zone (CPU, GPU, storage) with System providing oversight and coordination. For distributed systems, Pipelines represent remote thermal management nodes with System coordinating across network boundaries. Hierarchical control enables Systems to contain other Systems for multi-level thermal management architectures spanning from individual machines to entire data centers.
+**Timing Implementation:**
+System implements the Process timing infrastructure for independent execution:
+- `_calculate_next_tick_time()`: Finds earliest child ready time across all children
+- `_select_processes_to_execute()`: Returns children whose timing requirements are met
+- `_execute_selected_processes()`: Executes ready children independently
 
-System supports flexible execution models depending on thermal management requirements. In parallel mode, all Pipelines execute concurrently with results aggregated when complete, maximizing throughput for independent thermal zones. Sequential mode executes Pipelines in order, allowing dependencies between thermal zones where one zone's thermal state affects another's control strategy. Mixed mode combines these approaches, running some Pipelines in parallel groups while executing groups sequentially to balance independence with coordination requirements.
+**Execution Characteristics:**
+- **Serial execution**: Due to Python's GIL, execution remains serial but in timing-determined order
+- **Shared state access**: Children read/write System's persistent states independently
+- **Coordination hooks**: `_before_child_process()` and `_after_child_process()` enable coordination
+- **"Any news for me?" pattern**: Children can request updates from parent System
+- **Failure isolation**: Individual child failures don't abort System execution
 
-System inherits from Process, enabling Systems to be nested within larger Systems for scalable thermal management across data centers or complex hardware configurations.
+**Operational Patterns:**
+- **Independent zones**: CPU, GPU, storage thermal management with different update rates
+- **Distributed systems**: Remote thermal management nodes with network coordination
+- **Hierarchical control**: Systems containing other Systems for data center management
+- **Cross-zone coordination**: Thermal policies that span multiple thermal zones
 
-#### The Execution Pipeline
+**Architecture Benefits:**
+- Enables thermal zones with natural timing differences (fast sensors, slow actuators)
+- Supports coordination without forced synchronization
+- Scales from single-machine to data center thermal management
+- Maintains thermal control safety through failure isolation
 
-The system's main loop follows a consistent pattern:
+#### Timing-Driven Execution Pattern
+
+The Process timing infrastructure follows a template method pattern:
 
 ```mermaid
 sequenceDiagram
-    participant Pipeline
-    participant Environment
-    participant Controller1
-    participant Controller2
+    participant Process
+    participant Child1
+    participant Child2
+    participant ChildN
 
-    loop Every Update Cycle
-        Pipeline->>Environment: read()
-        activate Environment
-        Environment-->>Pipeline: returns 'actual' State
-        deactivate Environment
-        Pipeline->>Pipeline: context["actual"] = State
-
-        Pipeline->>Pipeline: Load 'desired' State from Profile
-        Pipeline->>Pipeline: context["desired"] = State
-
-        Pipeline->>Controller1: execute(context)
-        activate Controller1
-        Controller1-->>Pipeline: returns proposed_state_1
-        deactivate Controller1
+    loop Timing Loop
+        Process->>Process: _calculate_next_tick_time()
+        Process->>Process: sleep_until(next_tick_time)
         
-        Pipeline->>Controller2: execute(context, proposed_state_1)
-        activate Controller2
-        Controller2-->>Pipeline: returns final_actuator_state
-        deactivate Controller2
-
-        Pipeline->>Environment: apply(final_actuator_state)
-        activate Environment
-        Environment-->>Pipeline: Acknowledge
-        deactivate Environment
+        Process->>Process: _before_process()
+        Process->>Process: _select_processes_to_execute()
+        Process->>Process: _before_child_process(selected)
         
-        Pipeline->>Pipeline: sleep()
+        alt Pipeline (Unified Timing)
+            Process->>Child1: execute(states)
+            activate Child1
+            Child1-->>Process: modified_states
+            deactivate Child1
+            Process->>Child2: execute(modified_states)
+            activate Child2
+            Child2-->>Process: final_states
+            deactivate Child2
+        else System (Independent Timing)
+            par Ready Children Execute
+                Process->>Child1: execute(shared_states)
+                activate Child1
+                Child1-->>Process: child1_result
+                deactivate Child1
+            and
+                Process->>ChildN: execute(shared_states)
+                activate ChildN
+                ChildN-->>Process: childN_result
+                deactivate ChildN
+            end
+        end
+        
+        Process->>Process: _after_child_process(selected)
+        Process->>Process: _after_process()
+        Process->>Process: _update_timing_state()
     end
 ```
 
@@ -253,12 +314,20 @@ The goal is comprehensive stress testing where controllers must demonstrate stab
 
 ## Implementation Decisions
 
-**Process Interface Improvements**: The base Process class uses `_process()` method for subclass implementations instead of `_execute_impl()` for improved developer experience.
+**Process Timing Infrastructure**: The base Process class includes optional timing infrastructure through overridable methods rather than separate timing classes. This unified approach enables both simple transformations (Controllers, Environments) and complex coordination (Pipeline, System) within the same architectural framework.
 
-**Pipeline Execution Modes**: Pipeline supports autonomous timing-driven execution via `start()/stop()` methods for standalone thermal control loops, and standard Process execution when embedded in larger Systems. The same `execute()` method handles both modes - autonomous mode calls it repeatedly on persistent states, embedded mode processes input states from parent Systems.
+**Template Method Pattern**: Timing-driven execution uses a template method pattern where the timing loop structure is fixed but timing strategies are customizable through method overrides. This separation enables Pipeline's unified timing and System's independent timing using the same infrastructure.
 
-**Nanosecond Time Units**: Pipeline uses `interval_ns` field and `time.time_ns()` for timing with nanosecond time units. Overrideable `get_time()` method supports alternative time sources like GPS or NTP.
+**Unified vs Independent Timing**: Pipeline implements unified timing where all children execute together at shared intervals, preserving serial execution order. System implements independent timing where children execute when individually ready, enabling coordination across different thermal response characteristics.
+
+**GIL-Aware Design**: The architecture acknowledges Python's Global Interpreter Lock, designing "independent" timing as serial execution in timing-determined order rather than true parallelism. This simplifies implementation while providing the coordination benefits of independent timing.
+
+**Coordination Hooks**: Before/after process hooks (`_before_process`, `_after_process`, `_before_child_process`, `_after_child_process`) enable parent-child communication and coordination without requiring complex inter-process communication mechanisms.
+
+**Process Interface Improvements**: The base Process class uses `_process()` method for subclass implementations, providing clear separation between framework timing logic and domain-specific processing logic.
+
+**Nanosecond Time Units**: All timing uses `interval_ns` fields and `time.time_ns()` for precision. Overrideable `get_time()` method supports alternative time sources like GPS or NTP synchronization.
 
 **Device Quality Management**: Device properties include `timestamp` and `quality` fields with standard values ("valid", "stale", "failed", "unavailable") for operational state tracking. Only Environment processes update sensor timestamps and quality, preventing Controllers from corrupting sensor metadata.
 
-**Update Loop Timing**: Modulo-based timing ensures consistent intervals regardless of execution duration. Graceful shutdown via `stop()` method requests termination and can interrupt sleep cycles for responsive shutdown. Timing fields are serialized for remote monitoring and debugging.
+**Graceful Timing Control**: Modulo-based timing ensures consistent intervals regardless of execution duration. Responsive shutdown through `stop()` method with sleep interruption enables clean thermal control loop termination.
