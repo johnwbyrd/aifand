@@ -5,7 +5,6 @@ control flows.
 """
 
 import heapq
-from typing import Dict, List, Tuple
 
 from pydantic import Field
 
@@ -39,7 +38,7 @@ class System(Collection):
     """
 
     # Child process storage as priority queue (next_time, process)
-    process_heap: List[Tuple[int, Process]] = Field(
+    process_heap: list[tuple[int, Process]] = Field(
         default_factory=list,
         description="Priority queue of (next_execution_time, process) for "
         "parallel coordination",
@@ -122,7 +121,7 @@ class System(Collection):
         for _, process in self.process_heap:
             process.initialize_timing()
 
-    def _get_ready_children(self) -> List[Process]:
+    def _get_ready_children(self) -> list[Process]:
         """Get children that are ready to execute based on timing.
 
         Uses priority queue to efficiently find ready processes.
@@ -134,7 +133,7 @@ class System(Collection):
         if not self.process_heap:
             return []
 
-        ready_processes: List[Process] = []
+        ready_processes: list[Process] = []
         current_time = self.get_time()
 
         # Pop ready processes from the front of the heap
@@ -160,7 +159,7 @@ class System(Collection):
 
         return ready_processes
 
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         """Execute ready child processes independently.
 
         System finds children that are ready to execute based on their
@@ -192,11 +191,11 @@ class System(Collection):
             except PermissionError:
                 # Permission errors bubble up as programming errors
                 raise
-            except Exception as e:
-                self._logger.error(
-                    f"Child process {child.name} failed in system "
-                    f"{self.name}: {e}",
-                    exc_info=True,
+            except Exception:
+                self._logger.exception(
+                    "Child process %s failed in system %s",
+                    child.name,
+                    self.name,
                 )
                 # Re-add child to heap even on failure to continue
                 # scheduling

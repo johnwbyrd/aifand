@@ -1,1 +1,1 @@
-# pid.py
+"""PID controller implementation for thermal management."""

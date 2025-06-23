@@ -61,11 +61,32 @@ line-length = 79
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B", "C90", "D"]
-ignore = ["D100", "D104", "D107", "D203", "D213", "D401"]
+select = ["ALL"]
+ignore = [
+    # we depend on the Any type to pass arbitrary key/value collections
+    # to pydantic objects
+    "ANN401",
+    # trailing commas are ugly
+    "COM812",
+    # we need imports inside functions to avoid circular dependencies
+    "PLC0415"
+    ] 
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**.py" = [
+    # testing requires the use of magic values
+    "PLR2004",
+    # pytest depends upon assert
+    "S101",
+    # private member access is required for testing only
+    "SLF001"
+    ]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 72
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

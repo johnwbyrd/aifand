@@ -1,3 +1,5 @@
+"""Unit tests for Entity base class."""
+
 import json
 from uuid import UUID
 
@@ -11,7 +13,7 @@ from aifand.base.entity import Entity
 class TestEntity:
     """Test cases for the Entity base class."""
 
-    def test_entity_creation_with_defaults(self):
+    def test_entity_creation_with_defaults(self) -> None:
         """Test entity creation with default UUID generation."""
         entity = Entity(name="test_entity")
 
@@ -20,15 +22,15 @@ class TestEntity:
         assert entity.uuid is not None
 
     def test_entity_creation_with_provided_uuid(
-        self, sample_uuid, sample_name
-    ):
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test entity creation with explicitly provided UUID."""
         entity = Entity(uuid=sample_uuid, name=sample_name)
 
         assert entity.uuid == sample_uuid
         assert entity.name == sample_name
 
-    def test_entity_name_validation(self, sample_uuid):
+    def test_entity_name_validation(self, sample_uuid: UUID) -> None:
         """Test that entity name validation works correctly."""
         # Valid names should work
         entity = Entity(uuid=sample_uuid, name="valid_name")
@@ -38,7 +40,9 @@ class TestEntity:
         with pytest.raises(ValidationError):
             Entity(uuid=sample_uuid, name="")
 
-    def test_entity_uuid_immutability(self, sample_uuid, sample_name):
+    def test_entity_uuid_immutability(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test that UUID cannot be changed after creation."""
         entity = Entity(uuid=sample_uuid, name=sample_name)
         original_uuid = entity.uuid
@@ -49,7 +53,9 @@ class TestEntity:
 
         assert entity.uuid == original_uuid
 
-    def test_entity_serialization(self, sample_uuid, sample_name):
+    def test_entity_serialization(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test entity serialization to JSON."""
         entity = Entity(uuid=sample_uuid, name=sample_name)
 
@@ -68,7 +74,9 @@ class TestEntity:
         assert parsed["uuid"] == str(sample_uuid)
         assert parsed["name"] == sample_name
 
-    def test_entity_deserialization(self, sample_uuid, sample_name):
+    def test_entity_deserialization(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test entity deserialization from JSON."""
         original_entity = Entity(uuid=sample_uuid, name=sample_name)
         entity_json = original_entity.model_dump_json()
@@ -80,7 +88,9 @@ class TestEntity:
         assert reconstructed_entity.name == sample_name
         assert reconstructed_entity == original_entity
 
-    def test_entity_equality(self, sample_uuid, sample_name):
+    def test_entity_equality(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test entity equality comparison."""
         entity1 = Entity(uuid=sample_uuid, name=sample_name)
         entity2 = Entity(uuid=sample_uuid, name=sample_name)
@@ -92,7 +102,9 @@ class TestEntity:
         # Different name but same UUID should not be equal
         assert entity1 != entity3
 
-    def test_entity_representation(self, sample_uuid, sample_name):
+    def test_entity_representation(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test entity string representation shows all fields."""
         entity = Entity(uuid=sample_uuid, name=sample_name)
 
@@ -115,7 +127,9 @@ class TestEntity:
         assert "72.5" in repr_with_extras
         assert "active" in repr_with_extras
 
-    def test_entity_arbitrary_key_value_pairs(self, sample_uuid, sample_name):
+    def test_entity_arbitrary_key_value_pairs(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test Entity accepts arbitrary key/value pairs.
 
         Tests acceptance and preservation.
@@ -144,8 +158,8 @@ class TestEntity:
         assert entity.enabled is True
 
     def test_entity_arbitrary_fields_serialization(
-        self, sample_uuid, sample_name
-    ):
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test that arbitrary fields are properly serialized.
 
         Test deserialization roundtrip.
@@ -185,7 +199,9 @@ class TestEntity:
         assert reconstructed.custom_dict == {"nested": "value"}
         assert reconstructed.custom_bool is False
 
-    def test_entity_arbitrary_fields_equality(self, sample_uuid, sample_name):
+    def test_entity_arbitrary_fields_equality(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test arbitrary fields included in equality comparison.
 
         Tests equality checking behavior.
@@ -206,7 +222,9 @@ class TestEntity:
         # Different arbitrary field values should not be equal
         assert entity1 != entity3
 
-    def test_entity_arbitrary_fields_access(self, sample_uuid, sample_name):
+    def test_entity_arbitrary_fields_access(
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test accessing arbitrary fields through attribute access.
 
         Test dict-like access.
@@ -225,8 +243,8 @@ class TestEntity:
         assert data["dynamic_field"] == "dynamic_value"
 
     def test_entity_inheritance_with_arbitrary_fields(
-        self, sample_uuid, sample_name
-    ):
+        self, sample_uuid: UUID, sample_name: str
+    ) -> None:
         """Test that inheritance works with arbitrary fields."""
 
         class TestSubEntity(Entity):

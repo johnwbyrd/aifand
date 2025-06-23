@@ -12,7 +12,7 @@ class TestSystemParallelCoordination:
     Tests coordination for multiple thermal control flows.
     """
 
-    def test_system_priority_queue_mechanics(self):
+    def test_system_priority_queue_mechanics(self) -> None:
         """Test children execute in timing order.
 
         Test based on get_next_execution_time().
@@ -48,7 +48,7 @@ class TestSystemParallelCoordination:
         for i in range(1, len(execution_times)):
             assert execution_times[i - 1] <= execution_times[i]
 
-    def test_system_independent_timing(self):
+    def test_system_independent_timing(self) -> None:
         """Test children execute when individually ready.
 
         Tests execution is not synchronous.
@@ -80,7 +80,7 @@ class TestSystemParallelCoordination:
         # their timing. This verifies the System parallel coordination
         # logic works
 
-    def test_system_heap_management(self):
+    def test_system_heap_management(self) -> None:
         """Test processes correctly re-added to queue after execution.
 
         Test with updated times.
@@ -109,7 +109,7 @@ class TestSystemParallelCoordination:
         heap_time = system.process_heap[0][0]  # First element of first tuple
         assert heap_time == next_time
 
-    def test_system_ready_detection(self):
+    def test_system_ready_detection(self) -> None:
         """Test _get_ready_children() accurately identifies processes.
 
         Test processes ready to execute.
@@ -135,7 +135,7 @@ class TestSystemParallelCoordination:
         ready_names = [p.name for p in ready]
         assert "current" in ready_names
 
-    def test_system_state_isolation(self):
+    def test_system_state_isolation(self) -> None:
         """Test children execute with empty states {}.
 
         Test manage their own state.
@@ -163,7 +163,7 @@ class TestSystemParallelCoordination:
         if proc2.received_states_log:
             assert proc2.received_states_log[0] == {}
 
-    def test_system_dynamic_timing(self):
+    def test_system_dynamic_timing(self) -> None:
         """Test handles processes that change timing preferences.
 
         Test during execution.
@@ -173,13 +173,13 @@ class TestSystemParallelCoordination:
         system = System(name="test_system")
 
         class DynamicTimingProcess(MockProcess):
-            def __init__(self, name: str):
+            def __init__(self, name: str) -> None:
                 super().__init__(
                     name=name, interval_ns=50_000_000
                 )  # Start at 50ms
                 self.execution_count_local = 0
 
-            def _execute(self, states):
+            def _execute(self, states: dict[str, State]) -> dict[str, State]:
                 result = super()._execute(states)
                 self.execution_count_local += 1
                 # Change interval after first execution
@@ -202,7 +202,7 @@ class TestSystemParallelCoordination:
         # Total: 1 + 7 = 8 executions approximately
         assert len(proc.execution_timestamps) >= 3
 
-    def test_system_simultaneous_execution(self):
+    def test_system_simultaneous_execution(self) -> None:
         """Test multiple processes ready at exactly same time."""
         system = System(name="test_system")
 

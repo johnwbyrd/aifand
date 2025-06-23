@@ -1,1 +1,1 @@
-# gRPC server/client implementation via pydantic-rpc
+"""gRPC server/client implementation via pydantic-rpc."""

@@ -10,7 +10,7 @@ from .mocks import MockProcess
 class TestCollectionProtocol:
     """Test Collection protocol compliance for Pipeline and System."""
 
-    def test_pipeline_implements_collection_protocol(self):
+    def test_pipeline_implements_collection_protocol(self) -> None:
         """Test Pipeline correctly implements Collection interface."""
         pipeline = Pipeline(name="test_pipeline")
 
@@ -29,7 +29,7 @@ class TestCollectionProtocol:
         assert not pipeline.has("nonexistent")
         assert pipeline.get("nonexistent") is None
 
-    def test_system_implements_collection_protocol(self):
+    def test_system_implements_collection_protocol(self) -> None:
         """Test System correctly implements Collection interface."""
         system = System(name="test_system")
 
@@ -48,7 +48,7 @@ class TestCollectionProtocol:
         assert not system.has("nonexistent")
         assert system.get("nonexistent") is None
 
-    def test_collection_storage_strategy_verification(self):
+    def test_collection_storage_strategy_verification(self) -> None:
         """Test Pipeline uses list, System uses priority queue."""
         pipeline = Pipeline(name="test_pipeline")
         system = System(name="test_system")
@@ -61,7 +61,7 @@ class TestCollectionProtocol:
         assert hasattr(system, "process_heap")
         assert isinstance(system.process_heap, list)  # heapq uses list
 
-    def test_collection_edge_cases(self):
+    def test_collection_edge_cases(self) -> None:
         """Test collection edge cases.
 
         Tests empty collections, missing processes, duplicate names.
@@ -91,7 +91,7 @@ class TestCollectionProtocol:
             found_process = collection.get("test_process")
             assert found_process is not None
 
-    def test_collection_child_management(self):
+    def test_collection_child_management(self) -> None:
         """Test collection child management methods.
 
         Tests count(), append(), remove(), has(), get() work correctly.
@@ -127,7 +127,7 @@ class TestCollectionProtocol:
             assert not collection.remove("nonexistent")
             assert collection.count() == 2
 
-    def test_collection_timing_integration(self):
+    def test_collection_timing_integration(self) -> None:
         """Test initialize_timing() propagation.
 
         Tests propagation correctly to all children.

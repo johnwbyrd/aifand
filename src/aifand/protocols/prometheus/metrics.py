@@ -1,1 +1,1 @@
-# Prometheus metric definitions for thermal management
+"""Prometheus metric definitions for thermal management."""

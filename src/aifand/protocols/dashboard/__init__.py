@@ -1,1 +1,1 @@
-# Real-time dashboard via WebSocket/SSE
+"""Real-time dashboard via WebSocket/SSE."""

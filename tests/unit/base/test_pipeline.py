@@ -12,17 +12,17 @@ from .mocks import CountingMixin, FailingMixin, MockProcess
 class TestPipelineSerialCoordination:
     """Test Pipeline serial coordination for thermal control flows."""
 
-    def test_pipeline_state_flow_validation(self):
+    def test_pipeline_state_flow_validation(self) -> None:
         """Test input → child1.execute() → child2.execute() → output."""
         pipeline = Pipeline(name="test_pipeline")
 
         # Create mock processes that modify states
         class StateModifyingProcess(MockProcess):
-            def __init__(self, name: str, add_device: str):
+            def __init__(self, name: str, add_device: str) -> None:
                 super().__init__(name=name)
                 self.add_device = add_device
 
-            def _execute(self, states):
+            def _execute(self, states: dict[str, State]) -> dict[str, State]:
                 result = super()._execute(states)
                 if "data" in result:
                     sensor = Sensor(
@@ -47,7 +47,7 @@ class TestPipelineSerialCoordination:
         assert result_states["data"].has_device("sensor1")
         assert result_states["data"].has_device("sensor2")
 
-    def test_pipeline_execution_order(self):
+    def test_pipeline_execution_order(self) -> None:
         """Test children execute in append order consistently."""
         pipeline = Pipeline(name="test_pipeline")
 
@@ -76,7 +76,7 @@ class TestPipelineSerialCoordination:
         assert proc1.execution_timestamps[0] <= proc2.execution_timestamps[0]
         assert proc2.execution_timestamps[0] <= proc3.execution_timestamps[0]
 
-    def test_pipeline_error_resilience(self):
+    def test_pipeline_error_resilience(self) -> None:
         """Test failed children don't break pipeline.
 
         Tests execution continues despite failures.
@@ -88,7 +88,7 @@ class TestPipelineSerialCoordination:
             pass
 
         class FailingProcess(FailingMixin, MockProcess):
-            def __init__(self, name: str):
+            def __init__(self, name: str) -> None:
                 super().__init__(name=name, fail_after=0)  # Fail immediately
 
         proc1 = CountingProcess(name="good1")
@@ -109,11 +109,11 @@ class TestPipelineSerialCoordination:
         # Pipeline should return result despite failures
         assert "test" in result_states
 
-    def test_pipeline_permission_integration(self):
+    def test_pipeline_permission_integration(self) -> None:
         """Test PermissionErrors bubble up correctly."""
         pytest.skip("Permissions testing deferred per user request")
 
-    def test_pipeline_empty_handling(self):
+    def test_pipeline_empty_handling(self) -> None:
         """Test graceful handling with no children.
 
         Tests passthrough behavior.
@@ -136,7 +136,7 @@ class TestPipelineSerialCoordination:
             == 30.0
         )
 
-    def test_pipeline_list_storage(self):
+    def test_pipeline_list_storage(self) -> None:
         """Test child management operations work correctly.
 
         Test with internal list.

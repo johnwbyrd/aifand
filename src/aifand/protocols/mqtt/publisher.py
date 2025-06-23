@@ -1,1 +1,1 @@
-# MQTT publisher for thermal sensor data
+"""MQTT publisher for thermal sensor data."""

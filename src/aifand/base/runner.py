@@ -71,6 +71,7 @@ class Runner(Entity, ABC):
     )
 
     def __init__(self, **data: Any) -> None:
+        """Initialize runner with logging and threading setup."""
         super().__init__(**data)
         self._logger = logging.getLogger(
             f"{self.__class__.__module__}.{self.__class__.__name__}."
@@ -90,7 +91,7 @@ class Runner(Entity, ABC):
 
     @abstractmethod
     def _execution_loop(self) -> None:
-        """Main execution loop run in separate thread."""
+        """Run main execution loop in separate thread."""
 
     def start(self) -> None:
         """Start autonomous execution in background thread.
@@ -103,9 +104,10 @@ class Runner(Entity, ABC):
 
         """
         if self._thread and self._thread.is_alive():
-            raise RuntimeError(f"Runner {self.name} already started")
+            msg = f"Runner {self.name} already started"
+            raise RuntimeError(msg)
 
-        self._logger.info(f"Starting runner {self.name}")
+        self._logger.info("Starting runner %s", self.name)
 
         # Initialize timing state for entire process tree
         self.main_process.initialize_timing()
@@ -127,14 +129,14 @@ class Runner(Entity, ABC):
         if not self._thread:
             return
 
-        self._logger.info(f"Stopping runner {self.name}")
+        self._logger.info("Stopping runner %s", self.name)
         self._stop_requested = True
 
         # Wait for thread to finish
         self._thread.join(timeout=5.0)
         if self._thread.is_alive():
             self._logger.warning(
-                f"Runner {self.name} thread did not stop within timeout"
+                "Runner %s thread did not stop within timeout", self.name
             )
 
         self._thread = None
@@ -155,7 +157,7 @@ class Runner(Entity, ABC):
         The template method pattern in Process.execute() automatically
         handles execution count updates.
         """
-        self._logger.debug(f"Executing {self.main_process.name}")
+        self._logger.debug("Executing %s", self.main_process.name)
         self.main_process.execute({})
 
 
@@ -178,7 +180,7 @@ class StandardRunner(Runner):
         return time.monotonic_ns()
 
     def _execution_loop(self) -> None:
-        """Main execution loop that respects process timing."""
+        """Run main execution loop respecting process timing."""
         # Set ourselves as time source for this thread
         TimeSource.set_current(self)
 
@@ -200,18 +202,16 @@ class StandardRunner(Runner):
                         if sleep_duration > 0:
                             time.sleep(sleep_duration)
 
-                except Exception as e:
+                except Exception:
                     # Log error but continue execution
-                    self._logger.error(
-                        f"Error in execution loop: {e}", exc_info=True
-                    )
+                    self._logger.exception("Error in execution loop")
                     # Brief sleep to prevent tight error loop
                     time.sleep(0.1)
 
         finally:
             # Clean up thread-local storage
             TimeSource.clear_current()
-            self._logger.info(f"Runner {self.name} execution loop ended")
+            self._logger.info("Runner %s execution loop ended", self.name)
 
 
 class FastRunner(Runner):
@@ -235,6 +235,7 @@ class FastRunner(Runner):
     )
 
     def __init__(self, **data: Any) -> None:
+        """Initialize FastRunner with simulation time tracking."""
         super().__init__(**data)
         self._simulation_time = 0
         self._start_time = 0
@@ -255,8 +256,7 @@ class FastRunner(Runner):
             target_time: Time to advance to in nanoseconds
 
         """
-        if target_time > self._simulation_time:
-            self._simulation_time = target_time
+        self._simulation_time = max(self._simulation_time, target_time)
 
     def _should_continue_execution(self) -> bool:
         """Check if execution should continue.
@@ -325,12 +325,10 @@ class FastRunner(Runner):
         run_for_duration().
         """
         # This runner doesn't use threaded execution
-        raise NotImplementedError(
-            "FastRunner uses run_for_duration() instead of start()"
-        )
+        msg = "FastRunner uses run_for_duration() instead of start()"
+        raise NotImplementedError(msg)
 
     def start(self) -> None:
         """FastRunner doesn't support threaded execution."""
-        raise NotImplementedError(
-            "FastRunner uses run_for_duration() instead of start()"
-        )
+        msg = "FastRunner uses run_for_duration() instead of start()"
+        raise NotImplementedError(msg)

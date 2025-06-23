@@ -1,7 +1,7 @@
 """State classes for thermal management system snapshots."""
 
 import inspect
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,7 +23,7 @@ class State(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    devices: Dict[str, Device] = Field(
+    devices: dict[str, Device] = Field(
         default_factory=dict,
         description="Collection of devices indexed by name",
     )
@@ -61,16 +61,17 @@ class State(BaseModel):
         if modifying_process and not can_process_modify_device(
             modifying_process, device
         ):
-            raise PermissionError(
+            msg = (
                 f"{modifying_process.__class__.__name__} cannot modify "
                 f"{device.__class__.__name__} '{device.name}'"
             )
+            raise PermissionError(msg)
 
         new_devices = dict(self.devices)
         new_devices[device.name] = device
         return State(devices=new_devices)
 
-    def with_devices(self, devices: Dict[str, Device]) -> "State":
+    def with_devices(self, devices: dict[str, Device]) -> "State":
         """Return a new State with devices added or updated.
 
         Args:
@@ -87,10 +88,11 @@ class State(BaseModel):
         if modifying_process:
             for device in devices.values():
                 if not can_process_modify_device(modifying_process, device):
-                    raise PermissionError(
+                    msg = (
                         f"{modifying_process.__class__.__name__} cannot modify"
                         f"{device.__class__.__name__} '{device.name}'"
                     )
+                    raise PermissionError(msg)
 
         new_devices = dict(self.devices)
         new_devices.update(devices)
@@ -103,7 +105,7 @@ class State(BaseModel):
         return State(devices=new_devices)
 
     @classmethod
-    def _find_calling_process(cls) -> Optional[Any]:
+    def _find_calling_process(cls) -> Any | None:
         """Find the Process instance in the call stack."""
         for frame_info in inspect.stack():
             frame_locals = frame_info.frame.f_locals

@@ -1,1 +1,1 @@
-# MQTT subscriber for remote thermal sensors
+"""MQTT subscriber for remote thermal sensors."""

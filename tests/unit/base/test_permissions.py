@@ -1,7 +1,5 @@
 """Tests for device modification permission system."""
 
-from typing import Dict
-
 import pytest
 
 from src.aifand.base.device import Actuator, Sensor
@@ -14,7 +12,7 @@ from .mocks import MockController, MockEnvironment
 class SensorModifyingController(MockController):
     """Controller that tries to modify a sensor."""
 
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         if "actual" in states:
             sensor = Sensor(name="cpu_temp", properties={"value": 50.0})
             states["actual"] = states["actual"].with_device(sensor)
@@ -24,7 +22,7 @@ class SensorModifyingController(MockController):
 class ActuatorModifyingController(MockController):
     """Controller that tries to modify an actuator."""
 
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         if "actual" in states:
             actuator = Actuator(name="cpu_fan", properties={"value": 200})
             states["actual"] = states["actual"].with_device(actuator)
@@ -34,7 +32,7 @@ class ActuatorModifyingController(MockController):
 class SensorModifyingEnvironment(MockEnvironment):
     """Environment that tries to modify a sensor."""
 
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         if "actual" in states:
             sensor = Sensor(name="cpu_temp", properties={"value": 50.0})
             states["actual"] = states["actual"].with_device(sensor)
@@ -44,7 +42,7 @@ class SensorModifyingEnvironment(MockEnvironment):
 class TestDevicePermissions:
     """Test device modification permissions."""
 
-    def test_environment_can_modify_sensor(self):
+    def test_environment_can_modify_sensor(self) -> None:
         """Test that Environment can modify sensors."""
         env = SensorModifyingEnvironment(name="test_env")
         state = State()
@@ -54,7 +52,7 @@ class TestDevicePermissions:
         assert "actual" in result_states
         assert result_states["actual"].has_device("cpu_temp")
 
-    def test_environment_can_modify_actuator(self):
+    def test_environment_can_modify_actuator(self) -> None:
         """Test that Environment can modify actuators."""
         env = MockEnvironment(name="test_env")
         actuator = Actuator(name="cpu_fan", properties={"value": 128})
@@ -65,7 +63,7 @@ class TestDevicePermissions:
         result_states = env.execute({"actual": state.with_device(actuator)})
         assert "actual" in result_states
 
-    def test_controller_cannot_modify_sensor(self):
+    def test_controller_cannot_modify_sensor(self) -> None:
         """Test that Controller cannot modify sensors."""
         controller = SensorModifyingController(name="test_ctrl")
         state = State()
@@ -77,7 +75,7 @@ class TestDevicePermissions:
         ):
             controller.execute({"actual": state})
 
-    def test_controller_can_modify_actuator(self):
+    def test_controller_can_modify_actuator(self) -> None:
         """Test that Controller can modify actuators."""
         controller = ActuatorModifyingController(name="test_ctrl")
         state = State()
@@ -87,12 +85,12 @@ class TestDevicePermissions:
         assert "actual" in result_states
         assert result_states["actual"].has_device("cpu_fan")
 
-    def test_pid_controller_inherits_permissions(self):
+    def test_pid_controller_inherits_permissions(self) -> None:
         """Test that PIDController inherits Controller permissions."""
 
         # Create PID controllers that attempt modifications
         class PIDSensorModifier(MockController):
-            def _execute(self, states):
+            def _execute(self, states: dict[str, State]) -> dict[str, State]:
                 if "actual" in states:
                     sensor = Sensor(
                         name="cpu_temp", properties={"value": 50.0}
@@ -101,7 +99,7 @@ class TestDevicePermissions:
                 return states
 
         class PIDActuatorModifier(MockController):
-            def _execute(self, states):
+            def _execute(self, states: dict[str, State]) -> dict[str, State]:
                 if "actual" in states:
                     actuator = Actuator(
                         name="cpu_fan", properties={"value": 128}
@@ -127,7 +125,7 @@ class TestDevicePermissions:
         ):
             pid_sensor.execute({"actual": state})
 
-    def test_permission_bypass_outside_process_context(self):
+    def test_permission_bypass_outside_process_context(self) -> None:
         """Test permissions don't apply outside process context.
 
         Tests when not called from a process.

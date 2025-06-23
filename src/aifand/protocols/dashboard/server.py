@@ -1,1 +1,1 @@
-# WebSocket server for real-time thermal dashboard
+"""WebSocket server for real-time thermal dashboard."""

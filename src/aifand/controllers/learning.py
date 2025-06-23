@@ -1,1 +1,1 @@
-# learning.py
+"""Adaptive learning controllers for thermal management."""

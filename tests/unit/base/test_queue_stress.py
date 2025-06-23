@@ -15,7 +15,7 @@ from .mocks import MockTimedPipeline
 class TestLargeScaleCoordination:
     """Test System coordination with many processes."""
 
-    def test_fifty_process_coordination(self):
+    def test_fifty_process_coordination(self) -> None:
         """Test coordination with 50 processes of diverse intervals."""
         system = System(name="fifty_proc_test")
         processes = []
@@ -63,7 +63,7 @@ class TestLargeScaleCoordination:
             f"Total executions {total_executions} seems unreasonable"
         )
 
-    def test_hundred_process_coordination(self):
+    def test_hundred_process_coordination(self) -> None:
         """Test coordination with 100 processes to stress the system."""
         system = System(name="hundred_proc_test")
         processes = []
@@ -105,7 +105,7 @@ class TestLargeScaleCoordination:
                 f"got {actual_count}"
             )
 
-    def test_mixed_load_patterns(self):
+    def test_mixed_load_patterns(self) -> None:
         """Test coordination with mixed fast/medium/slow processes."""
         system = System(name="mixed_load_test")
 
@@ -173,7 +173,7 @@ class TestSimultaneousReadiness:
     Tests when many processes are ready simultaneously.
     """
 
-    def test_identical_intervals_simultaneous_execution(self):
+    def test_identical_intervals_simultaneous_execution(self) -> None:
         """Test many processes with identical intervals.
 
         Test executing simultaneously.
@@ -211,7 +211,7 @@ class TestSimultaneousReadiness:
                 f"Process {i} timestamps differ from reference"
             )
 
-    def test_harmonic_intervals_coordination(self):
+    def test_harmonic_intervals_coordination(self) -> None:
         """Test processes with harmonic intervals.
 
         Test multiples of base frequency.
@@ -251,7 +251,7 @@ class TestSimultaneousReadiness:
                 f"got {actual_count}"
             )
 
-    def test_burst_synchronization(self):
+    def test_burst_synchronization(self) -> None:
         """Test coordination when processes synchronize.
 
         Test at regular intervals.
@@ -316,7 +316,7 @@ class TestSimultaneousReadiness:
 class TestStressEdgeCases:
     """Test edge cases and stress scenarios."""
 
-    def test_very_fast_intervals(self):
+    def test_very_fast_intervals(self) -> None:
         """Test system handles very fast intervals.
 
         Tests microsecond range intervals.
@@ -356,7 +356,7 @@ class TestStressEdgeCases:
                 f"got {actual_count}"
             )
 
-    def test_irregular_intervals(self):
+    def test_irregular_intervals(self) -> None:
         """Test coordination with irregular, non-round intervals."""
         system = System(name="irregular_test")
 

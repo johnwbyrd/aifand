@@ -1,1 +1,1 @@
-# HTML templates and static assets for thermal dashboard
+"""HTML templates and static assets for thermal dashboard."""

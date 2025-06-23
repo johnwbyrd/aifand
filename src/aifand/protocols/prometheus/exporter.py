@@ -1,1 +1,1 @@
-# Prometheus metrics exporter for thermal data
+"""Prometheus metrics exporter for thermal data."""

@@ -1,4 +1,6 @@
-from typing import Any, Dict
+"""Pytest configuration and shared fixtures for test suite."""
+
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -6,19 +8,19 @@ import pytest
 
 @pytest.fixture
 def sample_uuid() -> UUID:
-    """Provides a consistent UUID for testing."""
+    """Provide a consistent UUID for testing."""
     return UUID("12345678-1234-5678-9abc-123456789abc")
 
 
 @pytest.fixture
 def sample_name() -> str:
-    """Provides a consistent name for testing."""
+    """Provide a consistent name for testing."""
     return "test_entity"
 
 
 @pytest.fixture
-def sample_device_properties() -> Dict[str, Any]:
-    """Provides sample device properties for testing."""
+def sample_device_properties() -> dict[str, Any]:
+    """Provide sample device properties for testing."""
     return {
         "value": 42.5,
         "min": 0.0,
@@ -30,11 +32,11 @@ def sample_device_properties() -> Dict[str, Any]:
 
 @pytest.fixture
 def random_uuid() -> UUID:
-    """Provides a random UUID for each test."""
+    """Provide a random UUID for each test."""
     return uuid4()
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """Configure pytest markers."""
     config.addinivalue_line("markers", "unit: marks tests as unit tests")
     config.addinivalue_line(

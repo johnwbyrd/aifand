@@ -1,1 +1,1 @@
-# MQTT messaging for distributed IoT sensors
+"""MQTT messaging for distributed IoT sensors."""

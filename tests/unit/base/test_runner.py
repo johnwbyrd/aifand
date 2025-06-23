@@ -18,7 +18,7 @@ from .mocks import MockProcess, MockTimedPipeline
 class TestTimeSource:
     """Test TimeSource thread-local storage functionality."""
 
-    def test_timesource_basic_operations(self):
+    def test_timesource_basic_operations(self) -> None:
         """Test TimeSource set/get/clear operations."""
         # Initially no runner
         assert TimeSource.get_current() is None
@@ -35,7 +35,7 @@ class TestTimeSource:
         TimeSource.clear_current()
         assert TimeSource.get_current() is None
 
-    def test_timesource_cleanup(self):
+    def test_timesource_cleanup(self) -> None:
         """Test TimeSource cleanup functionality."""
         pipeline = Pipeline(name="test")
         runner = StandardRunner(name="test_runner", main_process=pipeline)
@@ -51,14 +51,14 @@ class TestTimeSource:
         TimeSource.clear_current()
         assert TimeSource.get_current() is None
 
-    def test_timesource_thread_isolation(self):
+    def test_timesource_thread_isolation(self) -> None:
         """Test TimeSource provides thread isolation.
 
         Tests isolation for different runners.
         """
         results = {}
 
-        def thread_function(thread_id):
+        def thread_function(thread_id: int) -> None:
             pipeline = Pipeline(name=f"test_{thread_id}")
             runner = StandardRunner(
                 name=f"runner_{thread_id}", main_process=pipeline
@@ -84,7 +84,7 @@ class TestTimeSource:
 class TestStandardRunner:
     """Test StandardRunner real-time execution."""
 
-    def test_standard_runner_lifecycle_management(self):
+    def test_standard_runner_lifecycle_management(self) -> None:
         """Test StandardRunner start/stop lifecycle.
 
         Tests lifecycle with proper threading.
@@ -109,7 +109,7 @@ class TestStandardRunner:
         # Process should have executed at least once
         assert len(proc.execution_timestamps) >= 1
 
-    def test_standard_runner_timing_respect(self):
+    def test_standard_runner_timing_respect(self) -> None:
         """Test StandardRunner respects process timing preferences.
 
         Test with short intervals.
@@ -134,7 +134,7 @@ class TestStandardRunner:
             # Allow some tolerance (±10ms)
             assert 15_000_000 <= interval_ns <= 35_000_000
 
-    def test_standard_runner_error_resilience(self):
+    def test_standard_runner_error_resilience(self) -> None:
         """Test StandardRunner continues despite failures.
 
         Tests operation continues despite process failures.
@@ -142,7 +142,7 @@ class TestStandardRunner:
         from .mocks import FailingMixin
 
         class FailingProcess(FailingMixin, MockProcess):
-            def __init__(self, name: str):
+            def __init__(self, name: str) -> None:
                 super().__init__(
                     name=name, fail_after=2, interval_ns=20_000_000
                 )  # 20ms, fail after 2 executions
@@ -157,7 +157,7 @@ class TestStandardRunner:
         # Should have attempted multiple executions despite failures
         assert proc.fail_count >= 3
 
-    def test_standard_runner_graceful_shutdown(self):
+    def test_standard_runner_graceful_shutdown(self) -> None:
         """Test StandardRunner graceful shutdown.
 
         Tests shutdown with proper thread cleanup.
@@ -180,7 +180,7 @@ class TestStandardRunner:
 class TestFastRunner:
     """Test FastRunner simulation execution."""
 
-    def test_fast_runner_simulation_time(self):
+    def test_fast_runner_simulation_time(self) -> None:
         """Test FastRunner maintains internal simulation time."""
         proc = MockProcess(name="test_proc", interval_ns=100_000_000)  # 100ms
         runner = FastRunner(name="test_runner", main_process=proc)
@@ -189,7 +189,7 @@ class TestFastRunner:
         with pytest.raises(NotImplementedError):
             runner.start()
 
-    def test_fast_runner_duration_execution(self):
+    def test_fast_runner_duration_execution(self) -> None:
         """Test FastRunner run_for_duration() method."""
         proc = MockTimedPipeline(
             name="test_proc", interval_ns=50_000_000
@@ -203,7 +203,7 @@ class TestFastRunner:
         # Allow tolerance due to timing initialization
         assert 3 <= len(proc.execution_timestamps) <= 5
 
-    def test_fast_runner_deterministic_execution(self):
+    def test_fast_runner_deterministic_execution(self) -> None:
         """Test FastRunner provides deterministic execution.
 
         Test without real delays.
@@ -225,7 +225,7 @@ class TestFastRunner:
         # Should execute same number of times
         assert first_run_count == second_run_count
 
-    def test_fast_runner_safety_limits(self):
+    def test_fast_runner_safety_limits(self) -> None:
         """Test FastRunner safety limits prevent infinite loops."""
         proc = MockProcess(
             name="test_proc", interval_ns=1_000_000
@@ -248,7 +248,7 @@ class TestFastRunner:
 class TestRunnerIntegration:
     """Test Runner integration with Process hierarchy."""
 
-    def test_runner_time_source_integration(self):
+    def test_runner_time_source_integration(self) -> None:
         """Test Process.get_time() correctly uses runner time sources.
 
         Test runner-provided time sources.
@@ -266,7 +266,7 @@ class TestRunnerIntegration:
         # Process should have used runner's time source during execution
         assert len(proc.execution_timestamps) >= 1
 
-    def test_runner_process_initialization(self):
+    def test_runner_process_initialization(self) -> None:
         """Test initialize_timing() propagation.
 
         Tests propagation through entire process tree.
@@ -295,11 +295,11 @@ class TestRunnerIntegration:
         assert inner_proc1.execution_count >= 1
         assert inner_proc2.execution_count >= 1
 
-    def test_concurrent_access_multiple_runners(self):
+    def test_concurrent_access_multiple_runners(self) -> None:
         """Test multiple StandardRunners in different threads."""
         results = {}
 
-        def run_system(system_id):
+        def run_system(system_id: int) -> None:
             proc = MockProcess(
                 name=f"proc_{system_id}", interval_ns=30_000_000
             )  # 30ms

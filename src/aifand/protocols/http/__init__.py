@@ -1,1 +1,1 @@
-# HTTP REST API implementation via FastAPI
+"""HTTP REST API implementation via FastAPI."""

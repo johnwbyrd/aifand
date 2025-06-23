@@ -1,1 +1,1 @@
-# FastAPI server for thermal management REST API
+"""FastAPI server for thermal management REST API."""

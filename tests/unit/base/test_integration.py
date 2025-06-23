@@ -13,7 +13,7 @@ from .mocks import MockProcess, MockTimedPipeline, MockTimedSystem
 class TestRunnerSystemIntegration:
     """Test Runner executing System with multiple components."""
 
-    def test_fast_runner_with_system(self):
+    def test_fast_runner_with_system(self) -> None:
         """Test FastRunner executing System with multiple Pipelines.
 
         Test execution at different intervals.
@@ -42,7 +42,7 @@ class TestRunnerSystemIntegration:
         assert 4 <= len(fast_pipeline.execution_timestamps) <= 6
         assert 1 <= len(slow_pipeline.execution_timestamps) <= 2
 
-    def test_fast_runner_with_pipeline(self):
+    def test_fast_runner_with_pipeline(self) -> None:
         """Test FastRunner executing Pipeline.
 
         Tests execution with multiple processes.
@@ -72,7 +72,7 @@ class TestRunnerSystemIntegration:
 class TestHierarchicalComposition:
     """Test complex hierarchical process compositions."""
 
-    def test_system_containing_pipelines(self):
+    def test_system_containing_pipelines(self) -> None:
         """Test System containing multiple Pipeline instances."""
         # Create inner processes
         proc1 = MockProcess(name="proc1", interval_ns=40_000_000)
@@ -109,7 +109,7 @@ class TestHierarchicalComposition:
         assert len(proc2.execution_timestamps) == 4
         assert len(proc3.execution_timestamps) == 3
 
-    def test_system_containing_systems(self):
+    def test_system_containing_systems(self) -> None:
         """Test System containing other System instances.
 
         Tests hierarchical system composition.
@@ -148,7 +148,7 @@ class TestHierarchicalComposition:
 class TestMultiRateCoordination:
     """Test complex timing scenarios with multiple execution rates."""
 
-    def test_complex_timing_scenarios(self):
+    def test_complex_timing_scenarios(self) -> None:
         """Test coordination with mixed timing intervals.
 
         Tests processes at 10ms, 30ms, 70ms intervals.
@@ -182,25 +182,25 @@ class TestMultiRateCoordination:
         assert len(med_proc.execution_timestamps) == 7
         assert len(slow_proc.execution_timestamps) == 3
 
-    def test_permission_integration_under_runner(self):
+    def test_permission_integration_under_runner(self) -> None:
         """Test Controllers/Environments work correctly.
 
         Test under Runner execution.
         """
         pytest.skip("Permissions testing deferred per user request")
 
-    def test_state_flow_validation_hierarchical(self):
+    def test_state_flow_validation_hierarchical(self) -> None:
         """Test System properly isolates child state management."""
         from src.aifand.base.device import Sensor
 
         # Create state-modifying processes that track what states they
         # receive
         class StateTrackingProcess(MockProcess):
-            def __init__(self, name: str):
+            def __init__(self, name: str) -> None:
                 super().__init__(name=name, interval_ns=50_000_000)
                 self.received_states = None
 
-            def _execute(self, states):
+            def _execute(self, states: dict[str, State]) -> dict[str, State]:
                 self.received_states = states.copy()
                 return super()._execute(states)
 
@@ -240,7 +240,7 @@ class TestMultiRateCoordination:
 class TestAdvancedScenarios:
     """Test advanced integration scenarios."""
 
-    def test_dynamic_modification_during_execution(self):
+    def test_dynamic_modification_during_execution(self) -> None:
         """Test adding/removing children during execution."""
         # Note: This tests structural modification, not runtime
         # modification
@@ -273,7 +273,7 @@ class TestAdvancedScenarios:
         )  # 2 from first + 2 from second
         assert len(proc2.execution_timestamps) == 2  # 2 from second run only
 
-    def test_timing_edge_cases(self):
+    def test_timing_edge_cases(self) -> None:
         """Test zero intervals, very large intervals.
 
         Test timing changes mid-execution.
@@ -299,7 +299,7 @@ class TestAdvancedScenarios:
         assert len(fast_proc.execution_timestamps) == 100
         assert len(slow_proc.execution_timestamps) == 1
 
-    def test_memory_management(self):
+    def test_memory_management(self) -> None:
         """Test no leaks from threading or thread-local storage."""
         # Create and destroy multiple runners to test cleanup
         for i in range(10):
@@ -310,7 +310,7 @@ class TestAdvancedScenarios:
             # Verify cleanup (basic check)
             assert len(proc.execution_timestamps) >= 0
 
-    def test_long_duration_stability(self):
+    def test_long_duration_stability(self) -> None:
         """Test FastRunner reliability during extended simulations."""
         proc = MockTimedPipeline(
             name="stable_proc", interval_ns=10_000_000

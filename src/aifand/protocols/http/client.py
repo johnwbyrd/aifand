@@ -1,1 +1,1 @@
-# HTTP client for thermal management API
+"""HTTP client for thermal management API."""

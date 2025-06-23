@@ -10,7 +10,7 @@ from src.aifand.base.state import State
 class TestState:
     """Test the State class functionality."""
 
-    def test_state_creation_empty(self):
+    def test_state_creation_empty(self) -> None:
         """Test creating an empty state."""
         state = State()
 
@@ -18,7 +18,7 @@ class TestState:
         assert state.device_count() == 0
         assert state.device_names() == []
 
-    def test_state_creation_with_devices(self):
+    def test_state_creation_with_devices(self) -> None:
         """Test creating a state with initial devices."""
         temp_sensor = Sensor(
             name="cpu_temp", properties={"value": 45.0, "unit": "°C"}
@@ -36,7 +36,7 @@ class TestState:
         assert state.get_device("cpu_temp") == temp_sensor
         assert state.get_device("cpu_fan") == fan_actuator
 
-    def test_state_immutability(self):
+    def test_state_immutability(self) -> None:
         """Test that states cannot be modified after creation."""
         temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
         state = State(devices={"cpu_temp": temp_sensor})
@@ -45,7 +45,7 @@ class TestState:
         with pytest.raises(ValidationError):
             state.devices = {}
 
-    def test_state_device_access(self):
+    def test_state_device_access(self) -> None:
         """Test device access methods."""
         temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
         state = State(devices={"cpu_temp": temp_sensor})
@@ -62,7 +62,7 @@ class TestState:
         assert state.device_names() == ["cpu_temp"]
         assert state.device_count() == 1
 
-    def test_state_with_device(self):
+    def test_state_with_device(self) -> None:
         """Test adding/updating devices with with_device."""
         original_sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
         state = State(devices={"cpu_temp": original_sensor})
@@ -89,7 +89,7 @@ class TestState:
         assert updated_state.get_device("cpu_temp") == updated_sensor
         assert updated_state.get_device("cpu_temp") != original_sensor
 
-    def test_state_with_devices(self):
+    def test_state_with_devices(self) -> None:
         """Test adding/updating multiple devices with with_devices."""
         original_state = State()
 
@@ -108,7 +108,7 @@ class TestState:
         assert new_state.has_device("cpu_temp")
         assert new_state.has_device("cpu_fan")
 
-    def test_state_without_device(self):
+    def test_state_without_device(self) -> None:
         """Test removing devices with without_device."""
         devices = {
             "cpu_temp": Sensor(name="cpu_temp", properties={"value": 45.0}),
@@ -132,7 +132,7 @@ class TestState:
         same_state = new_state.without_device("nonexistent")
         assert same_state.device_count() == 1
 
-    def test_state_representation(self):
+    def test_state_representation(self) -> None:
         """Test state string representation."""
         # Empty state
         empty_state = State()
@@ -150,7 +150,7 @@ class TestState:
         assert "cpu_temp" in repr_str
         assert "cpu_fan" in repr_str
 
-    def test_state_serialization(self):
+    def test_state_serialization(self) -> None:
         """Test state serialization and deserialization."""
         temp_sensor = Sensor(
             name="cpu_temp", properties={"value": 45.0, "unit": "°C"}
@@ -178,7 +178,7 @@ class TestState:
         assert original_device.name == reconstructed_device.name
         assert original_device.properties == reconstructed_device.properties
 
-    def test_state_equality(self):
+    def test_state_equality(self) -> None:
         """Test state equality comparison."""
         temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
 

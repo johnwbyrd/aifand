@@ -1,1 +1,1 @@
-# gRPC client for remote thermal management
+"""gRPC client for remote thermal management."""

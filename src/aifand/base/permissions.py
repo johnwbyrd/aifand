@@ -24,7 +24,7 @@ sensor readings and create false feedback, potentially causing thermal
 runaway or inadequate cooling.
 """
 
-from typing import TYPE_CHECKING, Any, List, Tuple, Type
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .device import Device
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # Permission matrix: List of ((ProcessClass, DeviceClass), bool) in
 # order of precedence
 # More specific rules are checked first
-DEVICE_PERMISSIONS: List[Tuple[Tuple[Type[Any], Type[Any]], bool]] = []
+DEVICE_PERMISSIONS: list[tuple[tuple[type[Any], type[Any]], bool]] = []
 
 
 def register_permissions() -> None:
@@ -46,7 +46,9 @@ def register_permissions() -> None:
     from .device import Actuator, Device, Sensor
     from .process import Controller, Environment, Process
 
-    global DEVICE_PERMISSIONS
+    # Global needed to populate module-level permission matrix after
+    # imports are available (avoids circular dependency issues)
+    global DEVICE_PERMISSIONS  # noqa: PLW0603
     DEVICE_PERMISSIONS = [
         # More specific rules first - these override general rules
         ((Environment, Sensor), True),

@@ -1,1 +1,1 @@
-# controllers
+"""Thermal control algorithms and implementation modules."""

@@ -1,6 +1,6 @@
 """Device classes for thermal management hardware abstraction."""
 
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import Field
 
@@ -39,7 +39,7 @@ class Device(Entity):
       "stale", "failed", "unavailable", etc.
     """
 
-    properties: Dict[str, Any] = Field(
+    properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Flexible key-value storage for device-specific "
         "properties",
@@ -60,8 +60,6 @@ class Sensor(Device):
     - Hardware monitoring sensors
     """
 
-    pass
-
 
 class Actuator(Device):
     """A device that performs actions on the environment.
@@ -76,5 +74,3 @@ class Actuator(Device):
     - Power management actuators
     - Hardware enable/disable controls
     """
-
-    pass

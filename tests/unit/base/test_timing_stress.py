@@ -16,7 +16,7 @@ from .mocks import MockTimedPipeline
 class TestPrimeIntervalCoordination:
     """Test System coordination with prime number intervals."""
 
-    def test_prime_interval_coordination(self):
+    def test_prime_interval_coordination(self) -> None:
         """Test coordination with prime intervals.
 
         Tests 7ms, 11ms, 13ms, 17ms intervals.
@@ -57,7 +57,7 @@ class TestPrimeIntervalCoordination:
         assert len(proc_13ms.execution_timestamps) == 77
         assert len(proc_17ms.execution_timestamps) == 59
 
-    def test_coprime_intervals_pattern_verification(self):
+    def test_coprime_intervals_pattern_verification(self) -> None:
         """Test coprime intervals create predictable patterns.
 
         Interference patterns should be predictable.
@@ -106,7 +106,7 @@ class TestPrimeIntervalCoordination:
         assert actual_7ms_times == expected_7ms_times
         assert actual_11ms_times == expected_11ms_times
 
-    def test_extreme_interval_differences(self):
+    def test_extreme_interval_differences(self) -> None:
         """Test coordination with vastly different intervals.
 
         Tests burst patterns.
@@ -149,7 +149,7 @@ class TestPrimeIntervalCoordination:
 class TestComplexTimingScenarios:
     """Test complex timing coordination scenarios."""
 
-    def test_many_prime_intervals(self):
+    def test_many_prime_intervals(self) -> None:
         """Test coordination with many different prime intervals."""
         system = System(name="many_primes_test")
 
@@ -191,7 +191,7 @@ class TestComplexTimingScenarios:
                 f"got {actual_count}"
             )
 
-    def test_fibonacci_intervals(self):
+    def test_fibonacci_intervals(self) -> None:
         """Test coordination with Fibonacci sequence intervals."""
         system = System(name="fibonacci_test")
 
@@ -222,7 +222,7 @@ class TestComplexTimingScenarios:
                 f"got {actual_count}"
             )
 
-    def test_power_of_two_intervals(self):
+    def test_power_of_two_intervals(self) -> None:
         """Test coordination with power-of-2 intervals."""
         system = System(name="power2_test")
 

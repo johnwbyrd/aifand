@@ -12,7 +12,7 @@ THIS MEANS YOU, CLAUDE!
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import ConfigDict, Field
 
@@ -73,13 +73,14 @@ class Process(Entity, ABC):
     )
 
     def __init__(self, **data: Any) -> None:
+        """Initialize process with logging and execution tracking."""
         super().__init__(**data)
         # Create a logger specific to this process instance
         self._logger = logging.getLogger(
             f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}"
         )
 
-    def execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def execute(self, states: dict[str, State]) -> dict[str, State]:
         """Execute this process, transforming the input states.
 
         Template method that calls _execute() and automatically updates
@@ -100,13 +101,15 @@ class Process(Entity, ABC):
         try:
             result = self._execute(states)
             self.update_execution_count()
-            return result
-        except Exception:
-            # Don't update execution count on failure
+            # Keep return in try block to group success path together
+            return result  # noqa: TRY300
+        except Exception:  # noqa: TRY203
+            # Must catch and re-raise to prevent execution count update
+            # The re-raise preserves original exception and stack trace
             raise
 
     @abstractmethod
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         """Execute this process, transforming the input states.
 
         Subclasses implement this method instead of execute().
@@ -203,7 +206,7 @@ class Environment(Process, ABC):
     """
 
     @abstractmethod
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         """Environment-specific state transformation implementation."""
 
 
@@ -218,5 +221,5 @@ class Controller(Process, ABC):
     """
 
     @abstractmethod
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         """Controller-specific state transformation implementation."""

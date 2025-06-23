@@ -11,7 +11,7 @@ from src.aifand.base.device import Actuator, Device, Sensor
 class TestDevice:
     """Test the base Device class."""
 
-    def test_device_creation_minimal(self):
+    def test_device_creation_minimal(self) -> None:
         """Test creating a device with only required fields."""
         device = Device(name="temp_sensor")
 
@@ -19,7 +19,7 @@ class TestDevice:
         assert device.name == "temp_sensor"
         assert device.properties == {}
 
-    def test_device_creation_with_properties(self):
+    def test_device_creation_with_properties(self) -> None:
         """Test creating a device with property values."""
         properties = {
             "value": 45.2,
@@ -35,7 +35,7 @@ class TestDevice:
         assert device.properties["value"] == 45.2
         assert device.properties["unit"] == "°C"
 
-    def test_device_properties_access(self):
+    def test_device_properties_access(self) -> None:
         """Test accessing properties directly."""
         device = Device(
             name="fan_controller",
@@ -45,7 +45,7 @@ class TestDevice:
         assert device.properties["pwm"] == 128
         assert device.properties["max_pwm"] == 255
 
-    def test_device_immutability(self):
+    def test_device_immutability(self) -> None:
         """Test device properties cannot be modified after creation.
 
         Tests immutability constraints.
@@ -57,7 +57,7 @@ class TestDevice:
         ):  # pydantic frozen model raises ValidationError
             device.properties = {"value": 60}
 
-    def test_device_serialization(self):
+    def test_device_serialization(self) -> None:
         """Test device serialization to dict/JSON."""
         properties = {
             "value": 23.5,
@@ -72,7 +72,7 @@ class TestDevice:
         assert data["properties"] == properties
         assert isinstance(data["uuid"], str)
 
-    def test_device_deserialization(self):
+    def test_device_deserialization(self) -> None:
         """Test creating device from dict/JSON data."""
         data = {
             "uuid": str(uuid4()),
@@ -91,7 +91,7 @@ class TestDevice:
         assert device.properties["value"] == 68.0
         assert device.properties["critical"] == 95.0
 
-    def test_device_equality(self):
+    def test_device_equality(self) -> None:
         """Test device equality comparison."""
         uuid = uuid4()
         props = {"value": 42, "unit": "RPM"}
@@ -103,7 +103,7 @@ class TestDevice:
         assert device1 == device2
         assert device1 != device3
 
-    def test_device_representation(self):
+    def test_device_representation(self) -> None:
         """Test device string representation shows all fields."""
         device = Device(
             name="test_device", properties={"value": 100, "unit": "W"}
@@ -120,7 +120,7 @@ class TestDevice:
 class TestSensor:
     """Test the Sensor subclass."""
 
-    def test_sensor_creation(self):
+    def test_sensor_creation(self) -> None:
         """Test creating a sensor with thermal properties."""
         sensor = Sensor(
             name="cpu_core_temp",
@@ -141,7 +141,7 @@ class TestSensor:
         assert sensor.properties["unit"] == "°C"
         assert sensor.properties["critical"] == 95.0
 
-    def test_sensor_fan_speed(self):
+    def test_sensor_fan_speed(self) -> None:
         """Test creating a fan speed sensor."""
         sensor = Sensor(
             name="case_fan_rpm",
@@ -158,7 +158,7 @@ class TestSensor:
         assert sensor.properties["unit"] == "RPM"
         assert sensor.properties["max"] == 2000
 
-    def test_sensor_inheritance(self):
+    def test_sensor_inheritance(self) -> None:
         """Test that Sensor inherits from Device properly."""
         sensor = Sensor(name="test_sensor", custom_field="custom_value")
 
@@ -172,7 +172,7 @@ class TestSensor:
 class TestActuator:
     """Test the Actuator subclass."""
 
-    def test_actuator_creation(self):
+    def test_actuator_creation(self) -> None:
         """Test creating an actuator with control properties."""
         actuator = Actuator(
             name="cpu_fan_pwm",
@@ -192,7 +192,7 @@ class TestActuator:
         assert actuator.properties["max"] == 255
         assert "enable_path" in actuator.properties
 
-    def test_actuator_thermal_limit(self):
+    def test_actuator_thermal_limit(self) -> None:
         """Test creating a thermal limit actuator."""
         actuator = Actuator(
             name="cpu_thermal_limit",
@@ -209,7 +209,7 @@ class TestActuator:
         assert actuator.properties["unit"] == "°C"
         assert actuator.properties["min"] == 50.0
 
-    def test_actuator_inheritance(self):
+    def test_actuator_inheritance(self) -> None:
         """Test that Actuator inherits from Device properly."""
         actuator = Actuator(name="test_actuator", control_type="pwm")
 
@@ -226,7 +226,7 @@ class TestDevicePropertyConventions:
     Tests conventions for thermal management.
     """
 
-    def test_temperature_sensor_properties(self):
+    def test_temperature_sensor_properties(self) -> None:
         """Test standard temperature sensor property names."""
         temp_sensor = Sensor(
             name="cpu_temp",
@@ -253,7 +253,7 @@ class TestDevicePropertyConventions:
         assert "hwmon_path" in props
         assert "scale" in props
 
-    def test_fan_sensor_properties(self):
+    def test_fan_sensor_properties(self) -> None:
         """Test standard fan sensor property names."""
         fan_sensor = Sensor(
             name="case_fan",
@@ -272,7 +272,7 @@ class TestDevicePropertyConventions:
         assert props["min"] == 0
         assert isinstance(props["max"], int)
 
-    def test_pwm_actuator_properties(self):
+    def test_pwm_actuator_properties(self) -> None:
         """Test standard PWM actuator property names."""
         pwm_actuator = Actuator(
             name="cpu_fan_pwm",
@@ -293,7 +293,7 @@ class TestDevicePropertyConventions:
         assert props["max"] == 255
         assert "enable_path" in props
 
-    def test_thermal_limit_actuator_properties(self):
+    def test_thermal_limit_actuator_properties(self) -> None:
         """Test standard thermal limit actuator property names."""
         limit_actuator = Actuator(
             name="cpu_thermal_limit",

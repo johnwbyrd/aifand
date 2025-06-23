@@ -1,1 +1,1 @@
-# gRPC server for thermal management
+"""gRPC server for thermal management."""

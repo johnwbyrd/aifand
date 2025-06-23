@@ -1,7 +1,5 @@
 """Pipeline class for single thermal control flows."""
 
-from typing import Dict, List
-
 from pydantic import Field
 
 from .collection import Collection
@@ -21,7 +19,7 @@ class Pipeline(Collection):
     """
 
     # Child process storage for serial execution
-    children: List[Process] = Field(
+    children: list[Process] = Field(
         default_factory=list,
         description="Ordered list of child processes for serial execution",
     )
@@ -79,7 +77,7 @@ class Pipeline(Collection):
         for child in self.children:
             child.initialize_timing()
 
-    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: dict[str, State]) -> dict[str, State]:
         """Execute child processes serially.
 
         Passes states through children sequentially:
@@ -101,11 +99,11 @@ class Pipeline(Collection):
             except PermissionError:
                 # Permission errors bubble up as programming errors
                 raise
-            except Exception as e:
-                self._logger.error(
-                    f"Child process {child.name} failed in pipeline "
-                    f"{self.name}: {e}",
-                    exc_info=True,
+            except Exception:
+                self._logger.exception(
+                    "Child process %s failed in pipeline %s",
+                    child.name,
+                    self.name,
                 )
                 # Continue with next child (error resilience)
                 continue

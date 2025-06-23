@@ -1,1 +1,1 @@
-# Prometheus metrics export for thermal monitoring
+"""Prometheus metrics export for thermal monitoring."""

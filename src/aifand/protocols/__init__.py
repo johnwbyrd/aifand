@@ -1,1 +1,1 @@
-# Protocol implementations for different transport layers
+"""Communication protocols for thermal management system integration."""
