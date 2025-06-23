@@ -4,26 +4,22 @@ import time
 from threading import Thread
 from typing import Dict
 
-from pydantic import Field
-
 from src.aifand.base.device import Actuator, Sensor
 from src.aifand.base.pipeline import Pipeline
 from src.aifand.base.process import Environment
 from src.aifand.base.state import State
 
-from .mocks import MockController, MockEnvironment
+from .mocks import CountingMixin, FailingMixin, MockController, MockEnvironment
 
 
 # Test implementations for Pipeline testing
-class TestEnvironment(MockEnvironment):
+class TestEnvironment(CountingMixin, MockEnvironment):
     """Test environment that adds sensor readings."""
-
-    counter: int = Field(default=0, description="Counter for tracking executions")
 
     def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Add sensor reading with incrementing counter."""
-        # Increment counter to track executions
-        self.counter += 1
+        # Call parent to increment counter
+        states = super()._process(states)
 
         if "actual" in states:
             sensor = Sensor(
@@ -45,14 +41,13 @@ class TestEnvironment(MockEnvironment):
         return states
 
 
-class TestController(MockController):
+class TestController(CountingMixin, MockController):
     """Test controller that adds actuator settings."""
-
-    counter: int = Field(default=0, description="Counter for tracking executions")
 
     def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Add actuator setting based on sensor reading."""
-        self.counter += 1
+        # Call parent to increment counter
+        states = super()._process(states)
 
         if "actual" in states:
             # Read temperature from sensor
@@ -70,20 +65,10 @@ class TestController(MockController):
         return states
 
 
-class FailingController(MockController):
+class FailingController(FailingMixin, MockController):
     """Controller that fails after a certain number of executions."""
 
-    fail_after: int = Field(default=3, description="Number of executions before failing")
-    counter: int = Field(default=0, description="Execution counter")
-
-    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Fail after specified number of executions."""
-        self.counter += 1
-
-        if self.counter > self.fail_after:
-            raise RuntimeError(f"Simulated failure on execution {self.counter}")
-
-        return states
+    pass
 
 
 class TestPipelineBasics:

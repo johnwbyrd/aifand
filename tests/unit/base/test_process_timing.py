@@ -11,6 +11,8 @@ from src.aifand.base.device import Device
 from src.aifand.base.process import Process
 from src.aifand.base.state import State
 
+from .mocks import FailingMixin
+
 
 # Test classes for timing infrastructure testing
 class MockTimedProcess(Process):
@@ -53,18 +55,8 @@ class MockTimedProcess(Process):
         self.call_log.append(f"_after_child_process:{len(processes)}:{self.execution_count}")
 
 
-class FailingTimedProcess(Process):
+class FailingTimedProcess(FailingMixin, Process):
     """Process that fails during timing execution."""
-
-    fail_after: int = Field(default=3, description="Number of executions before failing")
-    call_count: int = Field(default=0, description="Number of times _process was called")
-
-    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Fail after specified number of executions."""
-        self.call_count += 1
-        if self.call_count > self.fail_after:
-            raise RuntimeError(f"Simulated failure on execution {self.call_count}")
-        return states
 
     def _calculate_next_tick_time(self) -> int:
         """Simple fixed interval timing."""
