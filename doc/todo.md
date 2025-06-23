@@ -11,15 +11,9 @@ This document outlines the remaining implementation tasks for `aifand` following
 ### Objective
 Fix timing inconsistencies in tests and create comprehensive stress testing for the base architecture timing coordination.
 
-### Tasks
+### Remaining Tasks
 
-1. **Fix Current Test Timing Issues** (tests/unit/base/):
-   - **Convert Integration Tests to Deterministic**: Replace `>=` assertions with `==` using FastRunner exclusively
-   - **Calculate Exact Execution Counts**: Based on simulation duration and process intervals
-   - **Reserve StandardRunner Tests**: Only for essential threading, lifecycle, and shutdown validation
-   - **Fix Timing Source Confusion**: Ensure tests use appropriate timing source for their purpose
-
-2. **Create Timing Stress Tests** (tests/unit/base/test_timing_stress.py):
+1. **Create Timing Stress Tests** (tests/unit/base/test_timing_stress.py):
    - **Prime Interval Coordination**: 7ms, 11ms, 13ms, 17ms processes testing complex overlap patterns
    - **Large-Scale Coordination**: 50+ processes with diverse intervals to stress System priority queue
    - **Coprime Intervals**: Intervals with no common factors creating long repetition cycles
@@ -27,17 +21,18 @@ Fix timing inconsistencies in tests and create comprehensive stress testing for 
    - **Burst Patterns**: Processes idle for long periods then suddenly active
    - **Edge Case Intervals**: 0ns, max integer, rapidly changing intervals
 
-3. **Queue Stress Testing** (tests/unit/base/test_queue_stress.py):
+2. **Queue Stress Testing** (tests/unit/base/test_queue_stress.py):
    - **Deep Priority Queue**: 100+ processes testing heap performance and correctness
    - **Simultaneous Readiness**: Many processes ready at exactly the same time
    - **Dynamic Addition/Removal**: Adding/removing processes during active execution
    - **Memory Behavior**: Ensure no leaks under heavy timing load
    - **Heap Invariant Validation**: Verify priority queue maintains correct ordering under stress
 
-4. **Minimal Real-Time Validation** (tests/unit/base/test_runner.py - cleanup):
-   - **Essential Threading Tests Only**: Lifecycle, error resilience, shutdown behavior
-   - **Short Intervals**: 10-30ms maximum to minimize test execution time
-   - **Real-Time Behavior**: Thread safety, actual sleeping, signal handling validation
+3. **Permission System Integration Testing** (tests/unit/base/test_permissions.py - enhancement):
+   - **Real Pipeline Permission Flow**: Test Controllers and Environments in actual Pipeline execution
+   - **Hierarchical Permission Validation**: Test permissions through System → Pipeline → Process chains
+   - **Runtime Permission Edge Cases**: Permission checking under concurrent execution
+   - **Permission Error Recovery**: System resilience when permission violations occur
 
 ---
 

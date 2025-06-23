@@ -26,7 +26,7 @@ A `State` represents a snapshot of device properties at a specific moment, imple
 
 ### Process
 
-The `Process` class represents computational units that transform thermal management data. Process provides a single `execute()` method that receives a dictionary of named states and returns a transformed dictionary of states. Process is a pure execution unit with no persistent state storage and no children.
+The `Process` class represents computational units that transform thermal management data. Process provides a template method `execute()` that calls the abstract `_execute()` method and automatically updates execution count. Subclasses implement `_execute()` to define their transformation logic. Process is a pure execution unit with no persistent state storage and no children.
 
 Process includes timing infrastructure with `interval_ns` field for execution intervals, `start_time` for timing loop initialization, `execution_count` for tracking completed cycles, and `get_next_execution_time()` method for calculating when next execution should occur using modulo timing. The timing system uses nanosecond precision with `get_time()` method that automatically uses runner-provided time sources when available, falling back to `time.monotonic_ns()`.
 
@@ -58,7 +58,9 @@ Pipeline maintains its own execution timing inherited from Process but does not 
 
 The `System` class implements parallel execution coordination for multiple independent thermal control flows. System inherits from Collection and manages child processes in a priority queue implemented as `process_heap: List[Tuple[int, Process]]` using Python's `heapq` module for efficient timing-based coordination.
 
-System execution finds processes ready to execute based on their individual timing preferences. The `_get_ready_children()` method queries the priority queue to find processes whose `get_next_execution_time()` is less than or equal to current time. Ready processes execute independently with their own state, and after execution they are re-added to the priority queue with updated next execution times.
+System execution finds processes ready to execute based on their individual timing preferences. The `_get_ready_children()` method queries the priority queue to find processes whose `get_next_execution_time()` is less than or equal to current time. Ready processes execute independently with empty states (state isolation), and after execution they are re-added to the priority queue with updated next execution times.
+
+System delegates its own timing to children through `get_next_execution_time()`, which returns the earliest child's next execution time rather than using System's own timing interval. This enables event-driven coordination where System executes precisely when children need to execute, avoiding polling.
 
 Collection protocol implementation operates on the priority queue: `append()` calculates the process's next execution time and pushes it onto the heap, `remove()` searches the heap and re-heapifies after removal, and `has()`/`get()` search through heap tuples by process name.
 
@@ -72,7 +74,7 @@ The `TimeSource` class encapsulates time source discovery using thread-local sto
 
 `StandardRunner` implements production execution that respects real-time timing, sleeping between executions to maintain proper intervals. It provides monotonic time to executed processes and handles graceful shutdown with proper thread cleanup.
 
-`FastRunner` implements accelerated execution for testing, maintaining internal simulation time that advances instantly to the next execution time without real delays. The `run_for_duration()` method enables deterministic testing of long-term thermal behavior in milliseconds rather than hours.
+`FastRunner` implements accelerated execution for testing, maintaining internal simulation time that advances instantly to the next execution time without real delays. FastRunner sets itself as the time source before initializing timing to ensure processes use simulation time (starting at 0) rather than wall clock time. The `run_for_duration()` method enables deterministic testing of long-term thermal behavior in milliseconds rather than hours.
 
 Runner integration enables autonomous thermal management operation through `StandardRunner` and rapid testing of complex timing scenarios through `FastRunner`. Both runners initialize timing state for the entire process hierarchy and provide error resilience to maintain thermal control operation.
 
@@ -115,10 +117,12 @@ classDiagram
     class Process {
         <<Abstract>>
         +execute(states) Dict[str, State]
+        +_execute(states) Dict[str, State]*
         +interval_ns: int
         +get_next_execution_time() int
         +get_time() int
         +initialize_timing() None
+        +update_execution_count() None
     }
     class Collection {
         <<Abstract>>
@@ -135,6 +139,7 @@ classDiagram
     }
     class System {
         +process_heap: List[Tuple[int, Process]]
+        +get_next_execution_time() int
     }
     class Runner {
         <<Abstract>>
@@ -206,7 +211,7 @@ Hardware tests will conduct real-world validation using actual thermal managemen
 
 **Collection Protocol**: Collection defines a coordination interface without specifying container implementation. Pipeline uses a list for serial execution, System uses a priority queue for timing-based parallel coordination. This duck-typed approach enables different storage strategies while maintaining consistent management interface.
 
-**Timing Separation**: Process knows when it wants to execute (`get_next_execution_time()`), Collections coordinate when execution actually occurs, Runner manages autonomous execution lifecycle. This separation enables Pipeline's unified timing (all children execute together) and System's independent timing (children execute when individually ready) using the same Process timing interface.
+**Timing Separation**: Process knows when it wants to execute (`get_next_execution_time()`), Collections coordinate when execution actually occurs, Runner manages autonomous execution lifecycle. This separation enables Pipeline's unified timing (all children execute together) and System's delegated timing (System executes when any child is ready) using the same Process timing interface. System delegates timing to children to achieve event-driven coordination rather than polling.
 
 **Runner Architecture**: Runner provides autonomous execution management with TimeSource abstraction enabling both real-time and accelerated testing. StandardRunner respects process timing for production operation, FastRunner accelerates time for rapid testing validation.
 

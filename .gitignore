@@ -18,6 +18,7 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+.VSCodeCounter/
 
 # Tool caches
 .mypy_cache/
