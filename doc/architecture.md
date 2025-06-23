@@ -118,19 +118,23 @@ The `System` class implements independent timing coordination for multiple therm
 **Independent Timing Strategy:**
 - Each child process operates on its own preferred interval
 - Children execute when ready, not in predetermined order
-- Shared state coordination through persistent states
+- System queries children for timing preferences rather than imposing intervals
 - Parent-child communication via coordination hooks
 - Enables thermal zones with different response characteristics
 
+**Child Timing Query Mechanism:**
+System uses an "ask-don't-tell" approach where children express timing preferences and System orchestrates execution. This contrasts with Pipeline's unified timing where the parent dictates execution timing to all children.
+
 **Timing Implementation:**
 System implements the Process timing infrastructure for independent execution:
-- `_calculate_next_tick_time()`: Finds earliest child ready time across all children
-- `_select_processes_to_execute()`: Returns children whose timing requirements are met
+- `_calculate_next_tick_time()`: Queries all children via their `_calculate_next_tick_time()` methods and returns the earliest requested time
+- `_select_processes_to_execute()`: Returns children whose next execution time is less than or equal to current time
 - `_execute_selected_processes()`: Executes ready children independently
 
 **Execution Characteristics:**
 - **Serial execution**: Due to Python's GIL, execution remains serial but in timing-determined order
-- **Shared state access**: Children read/write System's persistent states independently
+- **Isolated state execution**: Each child manages its own state; although state may be shared between its children, such sharing is not administered by the base class.
+- **Uniform child handling**: System treats Pipeline and System children uniformly through Process interface
 - **Coordination hooks**: `_before_child_process()` and `_after_child_process()` enable coordination
 - **"Any news for me?" pattern**: Children can request updates from parent System
 - **Failure isolation**: Individual child failures don't abort System execution
@@ -323,6 +327,10 @@ The goal is comprehensive stress testing where controllers must demonstrate stab
 **GIL-Aware Design**: The architecture acknowledges Python's Global Interpreter Lock, designing "independent" timing as serial execution in timing-determined order rather than true parallelism. This simplifies implementation while providing the coordination benefits of independent timing.
 
 **Coordination Hooks**: Before/after process hooks (`_before_process`, `_after_process`, `_before_child_process`, `_after_child_process`) enable parent-child communication and coordination without requiring complex inter-process communication mechanisms.
+
+**Process Initialization Infrastructure**: The Process `start()` method initialization logic is extracted into `_initialize_timing()` to enable parent processes (System) to initialize child timing state. This solves the bootstrap problem where children need timing state before first execution in hierarchical timing coordination.
+
+**System Timing Coordination**: System queries children for timing preferences via `_calculate_next_tick_time()` rather than imposing intervals, implementing an "ask-don't-tell" coordination model that respects individual child timing needs while maintaining execution order based on readiness.
 
 **Process Interface Improvements**: The base Process class uses `_process()` method for subclass implementations, providing clear separation between framework timing logic and domain-specific processing logic.
 
