@@ -1,7 +1,7 @@
 """Tests for the Process classes."""
 
 import logging
-from typing import Dict
+from typing import Dict, List
 
 import pytest
 from pydantic import Field
@@ -9,6 +9,8 @@ from pydantic import Field
 from src.aifand.base.device import Actuator, Device, Sensor
 from src.aifand.base.process import Controller, Environment, Process
 from src.aifand.base.state import State
+
+from .mocks import MockController, MockEnvironment
 
 
 # Test Process implementations for testing
@@ -21,6 +23,14 @@ class SimpleProcess(Process):
             test_device = Device(name="test_device", properties={"value": 42, "processed_by": self.name})
             states["actual"] = states["actual"].with_device(test_device)
         return states
+
+    def _calculate_next_tick_time(self) -> int:
+        """Simple fixed interval timing for tests."""
+        return self.start_time + (self.execution_count * self.interval_ns)
+
+    def _select_processes_to_execute(self) -> List[Process]:
+        """Return all children for unified timing (like Pipeline)."""
+        return self.children
 
 
 class MultiplyProcess(Process):
@@ -47,6 +57,14 @@ class MultiplyProcess(Process):
 
         return result_states
 
+    def _calculate_next_tick_time(self) -> int:
+        """Simple fixed interval timing for tests."""
+        return self.start_time + (self.execution_count * self.interval_ns)
+
+    def _select_processes_to_execute(self) -> List[Process]:
+        """Return all children for unified timing (like Pipeline)."""
+        return self.children
+
 
 class FailingProcess(Process):
     """Process that always raises an exception."""
@@ -55,9 +73,17 @@ class FailingProcess(Process):
         """Always raise an exception."""
         raise RuntimeError("This process always fails")
 
+    def _calculate_next_tick_time(self) -> int:
+        """Simple fixed interval timing for tests."""
+        return self.start_time + (self.execution_count * self.interval_ns)
 
-class MockEnvironment(Environment):
-    """Concrete Environment implementation for testing."""
+    def _select_processes_to_execute(self) -> List[Process]:
+        """Return all children for unified timing (like Pipeline)."""
+        return self.children
+
+
+class TestEnvironment(MockEnvironment):
+    """Environment implementation for process testing."""
 
     def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Test environment that adds a sensor reading."""
@@ -67,8 +93,8 @@ class MockEnvironment(Environment):
         return states
 
 
-class MockController(Controller):
-    """Concrete Controller implementation for testing."""
+class TestController(MockController):
+    """Controller implementation for process testing."""
 
     def _process(self, states: Dict[str, State]) -> Dict[str, State]:
         """Test controller that adds an actuator setting."""
@@ -453,7 +479,7 @@ class TestEnvironmentController:
 
     def test_environment_creation(self):
         """Test creating a concrete Environment."""
-        env = MockEnvironment(name="test_env")
+        env = TestEnvironment(name="test_env")
 
         assert isinstance(env, Environment)
         assert isinstance(env, Process)
@@ -461,7 +487,7 @@ class TestEnvironmentController:
 
     def test_controller_creation(self):
         """Test creating a concrete Controller."""
-        ctrl = MockController(name="test_ctrl")
+        ctrl = TestController(name="test_ctrl")
 
         assert isinstance(ctrl, Controller)
         assert isinstance(ctrl, Process)
@@ -469,7 +495,7 @@ class TestEnvironmentController:
 
     def test_environment_execution(self):
         """Test Environment execution behavior."""
-        env = MockEnvironment(name="test_env")
+        env = TestEnvironment(name="test_env")
 
         states = {"actual": State()}
         result_states = env.execute(states)
@@ -484,7 +510,7 @@ class TestEnvironmentController:
 
     def test_controller_execution(self):
         """Test Controller execution behavior."""
-        ctrl = MockController(name="test_ctrl")
+        ctrl = TestController(name="test_ctrl")
 
         states = {"actual": State()}
         result_states = ctrl.execute(states)
@@ -511,8 +537,8 @@ class TestProcessIntegration:
 
     def test_environment_controller_pipeline(self):
         """Test a realistic pipeline with Environment and Controller."""
-        env = MockEnvironment(name="environment")
-        ctrl = MockController(name="controller")
+        env = TestEnvironment(name="environment")
+        ctrl = TestController(name="controller")
 
         # Create system with environment and controller
         # When a process has children, it executes the children pipeline, not its own _process
@@ -531,8 +557,8 @@ class TestProcessIntegration:
 
     def test_realistic_control_loop(self):
         """Test a realistic control loop pipeline."""
-        env = MockEnvironment(name="environment")
-        ctrl = MockController(name="controller")
+        env = TestEnvironment(name="environment")
+        ctrl = TestController(name="controller")
 
         # Parent process just manages pipeline, doesn't execute its own logic
         parent = SimpleProcess(name="system", children=[env, ctrl])

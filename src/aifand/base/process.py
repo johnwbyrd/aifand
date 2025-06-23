@@ -2,6 +2,7 @@
 
 import copy
 import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
@@ -17,19 +18,21 @@ class Process(Entity, ABC):
     A Process represents a computational unit that transforms states within the system.
     Processes can contain child processes that execute in serial order, forming
     execution pipelines. Each process receives a dictionary of named states and
-    produces a transformed dictionary of states.  Critically, a process is stateless.
-    It does not maintain any internal state between calls to execute(). Instead, it
-    operates on the input states provided to execute() and returns a new dictionary
-    of states as output.
+    produces a transformed dictionary of states.
+
+    Process supports two execution modes:
+    1. Stateless execution via execute() for transformations
+    2. Timing-driven execution via start() for autonomous operation
 
     Key characteristics:
-    - Stateless: No data persists between execute() calls
+    - Stateless execution: No data persists between execute() calls
     - Pipeline: Child processes execute serially with state passthrough
     - Error resilient: Exceptions are caught, logged, and execution continues
     - Immutable input states: Input states are never modified (deep copy used)
     - Mutable structure: Process structure can be modified for construction
+    - Template method timing: Subclasses override timing strategies
 
-    Subclasses must implement _execute_impl() to define their specific logic.
+    Subclasses must implement _process() and timing methods to define their specific logic.
     """
 
     model_config = ConfigDict(extra="allow", frozen=False)
@@ -37,6 +40,17 @@ class Process(Entity, ABC):
     children: List["Process"] = Field(
         default_factory=list, description="Ordered list of child processes for pipeline execution"
     )
+
+    # Timing configuration
+    interval_ns: int = Field(
+        default=100_000_000,  # 100ms in nanoseconds
+        description="Default execution interval in nanoseconds for timing-driven mode",
+    )
+
+    # Runtime timing state (mutable during execution)
+    start_time: int = Field(default=0, description="Start time of current timing loop execution (nanoseconds)")
+    execution_count: int = Field(default=0, description="Number of completed execution cycles in timing mode")
+    stop_requested: bool = Field(default=False, description="Whether graceful stop has been requested")
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -181,6 +195,210 @@ class Process(Entity, ABC):
     def get_logger(self) -> logging.Logger:
         """Get the logger instance for this process."""
         return self._logger
+
+    def get_time(self) -> int:
+        """Get current time in nanoseconds.
+
+        Returns nanosecond timestamp. Can be overridden by subclasses to use
+        alternative time sources like GPS clocks, NTP synchronization, or
+        other high-precision timing sources.
+
+        Returns:
+            Current time in nanoseconds since epoch
+
+        """
+        return time.time_ns()
+
+    @abstractmethod
+    def _calculate_next_tick_time(self) -> int:
+        """Calculate when the next execution should occur.
+
+        This method implements the timing strategy for this process.
+        Different process types can implement different timing approaches:
+        - Pipeline: unified timing (all children execute at same interval)
+        - System: independent timing (find earliest child ready time)
+
+        Returns:
+            Nanosecond timestamp when next execution should occur
+
+        """
+        pass
+
+    @abstractmethod
+    def _select_processes_to_execute(self) -> List["Process"]:
+        """Select which child processes are ready for execution.
+
+        This method determines which children should execute based on
+        timing requirements and process-specific selection criteria.
+
+        Returns:
+            List of child processes ready for execution
+
+        """
+        pass
+
+    def _execute_selected_processes(self, processes: List["Process"]) -> None:
+        """Execute the selected child processes.
+
+        Default implementation executes processes serially. Subclasses
+        can override for different execution strategies (parallel, etc.).
+
+        Args:
+            processes: List of processes ready for execution
+
+        """
+        if not processes:
+            return
+
+        # Default implementation: execute as serial pipeline
+        # This preserves state flow between processes
+        result_states = getattr(self, "_current_states", {})
+
+        for process in processes:
+            try:
+                self._logger.debug(f"Executing selected process: {process.name}")
+                result_states = process.execute(result_states)
+            except PermissionError:
+                # Permission errors bubble up as programming errors
+                raise
+            except Exception as e:
+                self._logger.error(
+                    f"Selected process {process.name} failed during timing execution: {e}", exc_info=True
+                )
+                # Continue with other processes (error resilience)
+                continue
+
+        # Store results back for next cycle
+        self._current_states = result_states
+
+    def _before_process(self) -> None:
+        """Hook called before process execution in timing loop.
+
+        Subclasses can override to implement preparation logic.
+        Default implementation does nothing.
+        """
+        pass
+
+    def _after_process(self) -> None:
+        """Hook called after process execution in timing loop.
+
+        Subclasses can override to implement cleanup or coordination logic.
+        Default implementation does nothing.
+        """
+        pass
+
+    def _before_child_process(self, processes: List["Process"]) -> None:
+        """Hook called before child process execution.
+
+        Args:
+            processes: List of processes about to be executed
+
+        Subclasses can override to implement coordination logic.
+        Default implementation does nothing.
+
+        """
+        pass
+
+    def _after_child_process(self, processes: List["Process"]) -> None:
+        """Hook called after child process execution.
+
+        Args:
+            processes: List of processes that were executed
+
+        Subclasses can override to implement coordination logic.
+        Default implementation does nothing.
+
+        """
+        pass
+
+    def start(self) -> None:  # noqa: C901
+        """Start timing-driven execution using template method pattern.
+
+        Implements the timing loop structure following the architecture
+        document's sequence diagram. Timing strategies are customizable
+        through method overrides in subclasses.
+
+        Continues until stop() is called. Handles execution errors gracefully
+        by logging and continuing operation (critical for thermal systems).
+        """
+        self.start_time = self.get_time()
+        self.execution_count = 0
+        self.stop_requested = False
+
+        # Initialize current states if not set
+        if not hasattr(self, "_current_states"):
+            self._current_states = {}
+
+        self.get_logger().info(f"Starting timing-driven execution for process {self.name}")
+
+        while not self.stop_requested:
+            try:
+                # Template method pattern: calculate when to execute next
+                next_tick_time = self._calculate_next_tick_time()
+                current_time = self.get_time()
+
+                # Execute if we're at or past the target time
+                if current_time >= next_tick_time:
+                    # Coordination hooks
+                    self._before_process()
+
+                    # Select which processes to execute
+                    selected_processes = self._select_processes_to_execute()
+
+                    if selected_processes:
+                        # Execute child processes
+                        self._before_child_process(selected_processes)
+                        self._execute_selected_processes(selected_processes)
+                        self._after_child_process(selected_processes)
+                    else:
+                        # No children - execute this process directly
+                        try:
+                            self._logger.debug(f"Executing process {self.name} in timing mode")
+                            current_states = getattr(self, "_current_states", {})
+                            self._current_states = self._process(current_states)
+                        except PermissionError:
+                            # Permission errors bubble up as programming errors
+                            raise
+                        except Exception as e:
+                            self._logger.error(
+                                f"Process {self.name} failed during timing execution: {e}", exc_info=True
+                            )
+                            # Continue with timing loop (error resilience)
+
+                    self._after_process()
+                    self.execution_count += 1
+
+                    self.get_logger().debug(f"Completed timing execution cycle {self.execution_count}")
+
+                # Sleep with stop checking for responsive shutdown
+                if not self.stop_requested:
+                    next_tick_time = self._calculate_next_tick_time()
+                    sleep_time_ns = next_tick_time - self.get_time()
+
+                    if sleep_time_ns > 0:
+                        sleep_time_s = sleep_time_ns / 1_000_000_000  # Convert to seconds
+                        # Sleep in chunks to check stop_requested frequently
+                        while sleep_time_s > 0 and not self.stop_requested:
+                            chunk_duration = min(sleep_time_s, 0.1)  # 100ms max chunks
+                            time.sleep(chunk_duration)
+                            sleep_time_s = (self._calculate_next_tick_time() - self.get_time()) / 1_000_000_000
+
+            except Exception as e:
+                # Never abort timing loops - log error and continue
+                self.get_logger().error(f"Timing execution failed on cycle {self.execution_count}: {e}", exc_info=True)
+                self.execution_count += 1  # Still increment to maintain timing
+
+        self.get_logger().info(f"Stopped timing-driven execution for process {self.name}")
+
+    def stop(self) -> None:
+        """Request graceful shutdown of timing-driven execution.
+
+        Sets stop flag that will be checked during sleep cycles and before
+        next execution. Shutdown may take up to 100ms (sleep chunk size)
+        to complete.
+        """
+        self.get_logger().info(f"Stop requested for process {self.name}")
+        self.stop_requested = True
 
 
 class Environment(Process, ABC):

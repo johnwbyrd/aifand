@@ -5,41 +5,9 @@ from typing import Dict
 import pytest
 
 from src.aifand.base.device import Actuator, Sensor
-from src.aifand.base.process import Controller, Environment
 from src.aifand.base.state import State
 
-
-# Test process implementations
-class MockEnvironment(Environment):
-    """Test environment for permission testing."""
-
-    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
-        return states
-
-
-class MockController(Controller):
-    """Base test controller for permission testing."""
-
-    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
-        return states
-
-
-class PIDController(MockController):
-    """PID controller - should inherit Controller permissions."""
-
-    pass
-
-
-class SafetyController(MockController):
-    """Safety controller - should inherit Controller permissions."""
-
-    pass
-
-
-class LearningController(MockController):
-    """Learning controller - should inherit Controller permissions."""
-
-    pass
+from .mocks import MockController, MockEnvironment
 
 
 # Helper processes that actually try to modify devices
@@ -119,14 +87,14 @@ class TestDevicePermissions:
         """Test that PIDController inherits Controller permissions."""
 
         # Create PID controllers that attempt modifications
-        class PIDSensorModifier(PIDController):
+        class PIDSensorModifier(MockController):
             def _process(self, states):
                 if "actual" in states:
                     sensor = Sensor(name="cpu_temp", properties={"value": 50.0})
                     states["actual"] = states["actual"].with_device(sensor)
                 return states
 
-        class PIDActuatorModifier(PIDController):
+        class PIDActuatorModifier(MockController):
             def _process(self, states):
                 if "actual" in states:
                     actuator = Actuator(name="cpu_fan", properties={"value": 128})
