@@ -1,5 +1,13 @@
 # aifand - Adaptive Thermal Management
 
+[![Main CI](https://github.com/johnwbyrd/aifand/actions/workflows/main-ci.yml/badge.svg)](https://github.com/johnwbyrd/aifand/actions/workflows/main-ci.yml)
+[![codecov](https://codecov.io/gh/johnwbyrd/aifand/branch/main/graph/badge.svg)](https://codecov.io/gh/johnwbyrd/aifand)
+[![Python >=3.12](https://img.shields.io/badge/python->=3.12-blue.svg)](https://www.python.org/downloads/)
+[![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3+-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
+
 **NOTE: This project is currently in the architectural design and development phase. It is not yet ready for deployment or production use.**
 
 ## Project Purpose and Goals
