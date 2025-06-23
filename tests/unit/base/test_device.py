@@ -46,7 +46,10 @@ class TestDevice:
         assert device.properties["max_pwm"] == 255
 
     def test_device_immutability(self):
-        """Test that device properties cannot be modified after creation."""
+        """Test device properties cannot be modified after creation.
+
+        Tests immutability constraints.
+        """
         device = Device(name="test", properties={"value": 50})
 
         with pytest.raises(
@@ -218,7 +221,10 @@ class TestActuator:
 
 
 class TestDevicePropertyConventions:
-    """Test standard property naming conventions for thermal management."""
+    """Test standard property naming conventions.
+
+    Tests conventions for thermal management.
+    """
 
     def test_temperature_sensor_properties(self):
         """Test standard temperature sensor property names."""

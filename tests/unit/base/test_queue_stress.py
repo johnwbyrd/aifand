@@ -1,8 +1,9 @@
 """Queue stress tests for large-scale coordination scenarios.
 
-These tests validate System coordination under high load with many processes,
-simultaneous readiness, and various stress patterns. Tests focus on correctness
-and performance under load without assuming specific queue implementation.
+These tests validate System coordination under high load with many
+processes, simultaneous readiness, and various stress patterns. Tests
+focus on correctness and performance under load without assuming
+specific queue implementation.
 """
 
 from src.aifand.base.runner import FastRunner
@@ -56,7 +57,8 @@ class TestLargeScaleCoordination:
         total_executions = sum(
             len(proc.execution_timestamps) for proc in processes
         )
-        # Rough estimate: should be reasonable for 50 processes over 1 second
+        # Rough estimate: should be reasonable for 50 processes over 1
+        # second
         assert 500 <= total_executions <= 5000, (
             f"Total executions {total_executions} seems unreasonable"
         )
@@ -166,7 +168,10 @@ class TestLargeScaleCoordination:
 
 
 class TestSimultaneousReadiness:
-    """Test System behavior when many processes are ready simultaneously."""
+    """Test System behavior with simultaneous process readiness.
+
+    Tests when many processes are ready simultaneously.
+    """
 
     def test_identical_intervals_simultaneous_execution(self):
         """Test many processes with identical intervals.
@@ -213,7 +218,8 @@ class TestSimultaneousReadiness:
         """
         system = System(name="harmonic_test")
 
-        # Create processes with harmonic intervals: 10ms, 20ms, 40ms, 80ms
+        # Create processes with harmonic intervals: 10ms, 20ms, 40ms,
+        # 80ms
         base_interval = 10_000_000  # 10ms in nanoseconds
         processes = []
 
@@ -252,7 +258,8 @@ class TestSimultaneousReadiness:
         """
         system = System(name="burst_sync_test")
 
-        # Create processes that synchronize every 60ms (LCM of 12, 15, 20)
+        # Create processes that synchronize every 60ms (LCM of 12, 15,
+        # 20)
         intervals_ms = [12, 15, 20]  # LCM = 60ms
         processes = []
 
@@ -292,8 +299,8 @@ class TestSimultaneousReadiness:
         ]  # In nanoseconds
 
         for sync_point in sync_points:
-            # Check that all processes have executions at or very close to
-            # sync points
+            # Check that all processes have executions at or very close
+            # to sync points
             for proc in processes:
                 # Find closest execution to sync point
                 closest_time = min(
@@ -310,11 +317,15 @@ class TestStressEdgeCases:
     """Test edge cases and stress scenarios."""
 
     def test_very_fast_intervals(self):
-        """Test system handles very fast intervals (microsecond range)."""
+        """Test system handles very fast intervals.
+
+        Tests microsecond range intervals.
+        """
         system = System(name="fast_intervals_test")
         processes = []
 
-        # Create processes with very fast intervals: 100μs, 200μs, 500μs, 1ms
+        # Create processes with very fast intervals: 100μs, 200μs,
+        # 500μs, 1ms
         intervals_us = [100, 200, 500, 1000]  # microseconds
 
         for interval_us in intervals_us:

@@ -171,7 +171,8 @@ class TestState:
         )
         assert reconstructed_state.has_device("cpu_temp")
 
-        # Device should be equivalent (though potentially different UUID)
+        # Device should be equivalent (though potentially different
+        # UUID)
         original_device = original_state.get_device("cpu_temp")
         reconstructed_device = reconstructed_state.get_device("cpu_temp")
         assert original_device.name == reconstructed_device.name

@@ -52,7 +52,10 @@ class TestTimeSource:
         assert TimeSource.get_current() is None
 
     def test_timesource_thread_isolation(self):
-        """Test TimeSource provides thread isolation for different runners."""
+        """Test TimeSource provides thread isolation.
+
+        Tests isolation for different runners.
+        """
         results = {}
 
         def thread_function(thread_id):
@@ -82,7 +85,10 @@ class TestStandardRunner:
     """Test StandardRunner real-time execution."""
 
     def test_standard_runner_lifecycle_management(self):
-        """Test StandardRunner start/stop lifecycle with proper threading."""
+        """Test StandardRunner start/stop lifecycle.
+
+        Tests lifecycle with proper threading.
+        """
         proc = MockProcess(name="test_proc", interval_ns=30_000_000)  # 30ms
         runner = StandardRunner(name="test_runner", main_process=proc)
 
@@ -129,7 +135,10 @@ class TestStandardRunner:
             assert 15_000_000 <= interval_ns <= 35_000_000
 
     def test_standard_runner_error_resilience(self):
-        """Test StandardRunner continues operation despite process failures."""
+        """Test StandardRunner continues despite failures.
+
+        Tests operation continues despite process failures.
+        """
         from .mocks import FailingMixin
 
         class FailingProcess(FailingMixin, MockProcess):
@@ -149,7 +158,10 @@ class TestStandardRunner:
         assert proc.fail_count >= 3
 
     def test_standard_runner_graceful_shutdown(self):
-        """Test StandardRunner graceful shutdown with proper thread cleanup."""
+        """Test StandardRunner graceful shutdown.
+
+        Tests shutdown with proper thread cleanup.
+        """
         proc = MockProcess(name="test_proc", interval_ns=50_000_000)  # 50ms
         runner = StandardRunner(name="test_runner", main_process=proc)
 
@@ -228,7 +240,8 @@ class TestFastRunner:
         runner.run_for_duration(1.0)  # 1 second requested
 
         # Should have stopped due to safety limit
-        # Execution count depends on implementation but should be reasonable
+        # Execution count depends on implementation but should be
+        # reasonable
         assert len(proc.execution_timestamps) < 1000  # Sanity check
 
 
@@ -254,7 +267,10 @@ class TestRunnerIntegration:
         assert len(proc.execution_timestamps) >= 1
 
     def test_runner_process_initialization(self):
-        """Test initialize_timing() propagates through entire process tree."""
+        """Test initialize_timing() propagation.
+
+        Tests propagation through entire process tree.
+        """
         # Create nested structure: Pipeline containing processes
         inner_proc1 = MockProcess(name="inner1", interval_ns=50_000_000)
         inner_proc2 = MockProcess(name="inner2", interval_ns=50_000_000)
@@ -268,8 +284,8 @@ class TestRunnerIntegration:
         # Run simulation
         runner.run_for_duration(0.1)
 
-        # All processes should have initialized timing with simulation time
-        # (starting at 0)
+        # All processes should have initialized timing with
+        # simulation time (starting at 0)
         assert pipeline.start_time == 0
         assert inner_proc1.start_time == 0
         assert inner_proc2.start_time == 0

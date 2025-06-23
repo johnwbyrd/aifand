@@ -11,13 +11,14 @@ from .device import Device
 class State(BaseModel):
     """A snapshot of device properties at a specific moment.
 
-    State represents a collection of devices and their current properties.
-    States are unopinionated about their meaning; their role (like "actual"
-    or "desired") is defined by how a Process uses them.
+    State represents a collection of devices and their current
+    properties. States are unopinionated about their meaning; their role
+    (like "actual" or "desired") is defined by how a Process uses them.
 
-    The devices are stored in a dictionary keyed by device name for efficient
-    lookup and modification. States are immutable to prevent accidental
-    modification and ensure clean data flow through process pipelines.
+    The devices are stored in a dictionary keyed by device name for
+    efficient lookup and modification. States are immutable to prevent
+    accidental modification and ensure clean data flow through process
+    pipelines.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -32,7 +33,15 @@ class State(BaseModel):
         return self.devices.get(name)
 
     def has_device(self, name: str) -> bool:
-        """Check if a device with the given name exists in this state."""
+        """Check if a device exists in this state.
+
+        Args:
+            name: Name of device to check
+
+        Returns:
+            True if device exists
+
+        """
         return name in self.devices
 
     def device_names(self) -> list[str]:
@@ -62,7 +71,15 @@ class State(BaseModel):
         return State(devices=new_devices)
 
     def with_devices(self, devices: Dict[str, Device]) -> "State":
-        """Return a new State with the given devices added or updated."""
+        """Return a new State with devices added or updated.
+
+        Args:
+            devices: Dictionary of devices to add/update
+
+        Returns:
+            New State instance with updated devices
+
+        """
         # Check permission for each device before adding it
         from .permissions import can_process_modify_device
 
@@ -103,6 +120,9 @@ class State(BaseModel):
         return None
 
     def __repr__(self) -> str:
-        """Return a string representation showing device count and names."""
+        """Return string representation with device info.
+
+        Shows device count and names.
+        """
         device_names = ", ".join(self.device_names())
         return f"State({self.device_count()} devices: {device_names})"

@@ -116,7 +116,10 @@ class TestEntity:
         assert "active" in repr_with_extras
 
     def test_entity_arbitrary_key_value_pairs(self, sample_uuid, sample_name):
-        """Test that Entity accepts and preserves arbitrary key/value pairs."""
+        """Test Entity accepts arbitrary key/value pairs.
+
+        Tests acceptance and preservation.
+        """
         # Create entity with arbitrary additional fields
         entity = Entity(
             uuid=sample_uuid,
@@ -183,7 +186,10 @@ class TestEntity:
         assert reconstructed.custom_bool is False
 
     def test_entity_arbitrary_fields_equality(self, sample_uuid, sample_name):
-        """Test that arbitrary fields are included in equality comparison."""
+        """Test arbitrary fields included in equality comparison.
+
+        Tests equality checking behavior.
+        """
         entity1 = Entity(
             uuid=sample_uuid, name=sample_name, extra_field="value1"
         )

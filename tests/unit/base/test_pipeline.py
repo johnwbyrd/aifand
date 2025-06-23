@@ -71,12 +71,16 @@ class TestPipelineSerialCoordination:
         assert len(proc2.execution_timestamps) == 1
         assert len(proc3.execution_timestamps) == 1
 
-        # Timestamps should be in order (proc1 before proc2 before proc3)
+        # Timestamps should be in order (proc1 before proc2 before
+        # proc3)
         assert proc1.execution_timestamps[0] <= proc2.execution_timestamps[0]
         assert proc2.execution_timestamps[0] <= proc3.execution_timestamps[0]
 
     def test_pipeline_error_resilience(self):
-        """Test failed children don't break pipeline, execution continues."""
+        """Test failed children don't break pipeline.
+
+        Tests execution continues despite failures.
+        """
         pipeline = Pipeline(name="test_pipeline")
 
         # Create mix of good and failing processes
@@ -110,7 +114,10 @@ class TestPipelineSerialCoordination:
         pytest.skip("Permissions testing deferred per user request")
 
     def test_pipeline_empty_handling(self):
-        """Test graceful handling with no children (passthrough behavior)."""
+        """Test graceful handling with no children.
+
+        Tests passthrough behavior.
+        """
         pipeline = Pipeline(name="empty_pipeline")
 
         # Create initial state

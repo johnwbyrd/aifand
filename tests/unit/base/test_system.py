@@ -7,7 +7,10 @@ from .mocks import MockProcess, MockTimedPipeline
 
 
 class TestSystemParallelCoordination:
-    """Test System parallel coordination for multiple thermal control flows."""
+    """Test System parallel coordination.
+
+    Tests coordination for multiple thermal control flows.
+    """
 
     def test_system_priority_queue_mechanics(self):
         """Test children execute in timing order.
@@ -29,7 +32,8 @@ class TestSystemParallelCoordination:
         # Initialize timing
         system.initialize_timing()
 
-        # Get ready children - should return in timing order (earliest first)
+        # Get ready children - should return in timing order
+        # (earliest first)
         ready_children = system._get_ready_children()
 
         # All should be ready initially (execution_count = 0)
@@ -45,11 +49,15 @@ class TestSystemParallelCoordination:
             assert execution_times[i - 1] <= execution_times[i]
 
     def test_system_independent_timing(self):
-        """Test children execute when individually ready, not synchronously."""
+        """Test children execute when individually ready.
+
+        Tests execution is not synchronous.
+        """
         system = System(name="test_system")
 
         # Test that System handles timing independently vs synchronously
-        # Instead of testing execution counts, test that timing is respected
+        # Instead of testing execution counts, test that timing is
+        # respected
         fast_proc = MockTimedPipeline(
             name="fast", interval_ns=50_000_000
         )  # 50ms
@@ -68,8 +76,9 @@ class TestSystemParallelCoordination:
         assert len(fast_proc.execution_timestamps) >= 1
         assert len(slow_proc.execution_timestamps) >= 1
 
-        # Test that processes are executed independently based on their timing
-        # This verifies the System parallel coordination logic works
+        # Test that processes are executed independently based on
+        # their timing. This verifies the System parallel coordination
+        # logic works
 
     def test_system_heap_management(self):
         """Test processes correctly re-added to queue after execution.
@@ -185,9 +194,11 @@ class TestSystemParallelCoordination:
         runner = FastRunner(name="test_runner", main_process=system)
         runner.run_for_duration(0.15)  # 150ms simulation
 
-        # Should handle timing changes gracefully and execute multiple times
+        # Should handle timing changes gracefully and execute
+        # multiple times
         # First execution at 0ms, then changes to 20ms interval
-        # Subsequent executions at 20ms, 40ms, 60ms, 80ms, 100ms, 120ms, 140ms
+        # Subsequent executions at 20ms, 40ms, 60ms, 80ms, 100ms,
+        # 120ms, 140ms
         # Total: 1 + 7 = 8 executions approximately
         assert len(proc.execution_timestamps) >= 3
 

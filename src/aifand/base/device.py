@@ -10,10 +10,10 @@ from .entity import Entity
 class Device(Entity):
     """Base class for hardware interface points (sensors and actuators).
 
-    A Device represents a single interface point with hardware, storing
-    arbitrary key-value pairs in its properties dictionary. This flexible
-    approach supports different hardware types while maintaining
-    consistent access patterns.
+    A Device represents a single interface point with hardware,
+    storing arbitrary key-value pairs in its properties dictionary.
+    This flexible approach supports different hardware types while
+    maintaining consistent access patterns.
 
     Common property naming conventions for thermal management:
     - value: Current reading/setting
@@ -24,19 +24,19 @@ class Device(Entity):
     - label: Human-readable description
     - priority: "Importance" of the device, which optimizers can use to
       prioritize goals. Higher numbers indicate higher priority, unlike
-      Linux priority levels. Generally, higher priority devices should be
-      optimized first
+      Linux priority levels. Generally, higher priority devices should
+      be optimized first
     - hwmon_path: Linux hwmon filesystem path
     - enable_path: Hardware enable/disable path (for actuators)
     - scale: Conversion factor for raw hardware values; multiply the raw
       value by this to get the real value
-    - desire: +1 for when we prefer the "value" property to go up, -1 for
-      when we prefer it to go down. Generally we prefer temperatures to go
-      down, fan speeds to go down, and power consumption to go down, but
-      you may prefer green power consumption to go up
+    - desire: +1 for when we prefer the "value" property to go up, -1
+      for when we prefer it to go down. Generally we prefer temperatures
+      to go down, fan speeds to go down, and power consumption to go
+      down, but you may prefer green power consumption to go up
     - timestamp: A nanosecond timestamp of the last valid update
-    - quality: How well the device is functioning, e.g., "valid", "stale",
-      "failed", "unavailable", etc.
+    - quality: How well the device is functioning, e.g., "valid",
+      "stale", "failed", "unavailable", etc.
     """
 
     properties: Dict[str, Any] = Field(

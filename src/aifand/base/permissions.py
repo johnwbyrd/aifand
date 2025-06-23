@@ -1,4 +1,4 @@
-"""Device modification permission matrix for thermal management processes.
+"""Device modification permission matrix for thermal management.
 
 This module enforces critical separation of concerns in thermal
 management systems:
@@ -10,9 +10,9 @@ management systems:
 
 The permission system prevents controllers from accidentally or
 maliciously modifying sensor readings, which would corrupt the thermal
-control feedback loop. This is essential for safety in thermal management
-where incorrect sensor readings could lead to inadequate cooling and
-hardware damage.
+control feedback loop. This is essential for safety in thermal
+management where incorrect sensor readings could lead to inadequate
+cooling and hardware damage.
 
 Permission checking occurs at runtime using call stack inspection to
 identify the modifying process when State.with_device() is called. The
@@ -30,17 +30,18 @@ if TYPE_CHECKING:
     from .device import Device
     from .process import Process
 
-# Permission matrix: List of ((ProcessClass, DeviceClass), bool) in order
-# of precedence
+# Permission matrix: List of ((ProcessClass, DeviceClass), bool) in
+# order of precedence
 # More specific rules are checked first
 DEVICE_PERMISSIONS: List[Tuple[Tuple[Type[Any], Type[Any]], bool]] = []
 
 
 def register_permissions() -> None:
-    """Register device modification permissions after imports are available.
+    """Register device modification permissions.
 
-    This function registers the permission matrix for device modifications
-    by processes after all necessary imports are available.
+    This function registers the permission matrix for device
+    modifications by processes after all necessary imports are
+    available.
     """
     from .device import Actuator, Device, Sensor
     from .process import Controller, Environment, Process

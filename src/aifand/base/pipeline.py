@@ -1,4 +1,4 @@
-"""Pipeline class for single thermal control flows with serial execution."""
+"""Pipeline class for single thermal control flows."""
 
 from typing import Dict, List
 
@@ -10,11 +10,11 @@ from .state import State
 
 
 class Pipeline(Collection):
-    """Sequential execution unit for serial thermal control coordination.
+    """Sequential execution unit for serial thermal control.
 
-    Pipeline manages a single logical control flow by executing child processes
-    sequentially in order. It passes states through children serially:
-    input → child1.execute() → child2.execute() → ... → output
+    Pipeline manages a single logical control flow by executing child
+    processes sequentially in order. It passes states through children
+    serially: input → child1.execute() → child2.execute() → ... → output
 
     Pipeline maintains its own execution rate and coordinates timing,
     but does not store persistent state - it's a pure coordinator.
@@ -47,7 +47,15 @@ class Pipeline(Collection):
         return False
 
     def has(self, name: str) -> bool:
-        """Check if a process with the given name exists in the pipeline."""
+        """Check if a process exists in the pipeline.
+
+        Args:
+            name: Name of process to check
+
+        Returns:
+            True if process exists
+
+        """
         return any(child.name == name for child in self.children)
 
     def get(self, name: str) -> Process | None:
@@ -60,8 +68,9 @@ class Pipeline(Collection):
     def initialize_timing(self) -> None:
         """Initialize timing state for pipeline and all children.
 
-        Propagates timing initialization to all child processes to ensure
-        the entire process tree has clean timing state before execution.
+        Propagates timing initialization to all child processes to
+        ensure the entire process tree has clean timing state before
+        execution.
         """
         # Initialize our own timing
         super().initialize_timing()
@@ -71,7 +80,7 @@ class Pipeline(Collection):
             child.initialize_timing()
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Execute child processes serially and return transformed states.
+        """Execute child processes serially.
 
         Passes states through children sequentially:
         input → child1.execute() → child2.execute() → ... → output

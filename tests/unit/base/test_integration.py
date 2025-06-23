@@ -43,7 +43,10 @@ class TestRunnerSystemIntegration:
         assert 1 <= len(slow_pipeline.execution_timestamps) <= 2
 
     def test_fast_runner_with_pipeline(self):
-        """Test FastRunner executing Pipeline with multiple processes."""
+        """Test FastRunner executing Pipeline.
+
+        Tests execution with multiple processes.
+        """
         # Create pipeline with multiple processes
         proc1 = MockProcess(name="proc1", interval_ns=30_000_000)  # 30ms
         proc2 = MockProcess(name="proc2", interval_ns=30_000_000)  # 30ms
@@ -93,9 +96,10 @@ class TestHierarchicalComposition:
         runner = FastRunner(name="test_runner", main_process=system)
         runner.run_for_duration(0.2)  # 200ms
 
-        # Calculate exact execution counts: initial execution at t=0 plus
-        # interval-based executions
-        # pipeline1: executions at 0ms, 50ms, 100ms, 150ms = 4 executions
+        # Calculate exact execution counts: initial execution at t=0
+        # plus interval-based executions
+        # pipeline1: executions at 0ms, 50ms, 100ms, 150ms = 4
+        # executions
         # pipeline2: executions at 0ms, 70ms, 140ms = 3 executions
         assert len(pipeline1.execution_timestamps) == 4
         assert len(pipeline2.execution_timestamps) == 3
@@ -106,7 +110,10 @@ class TestHierarchicalComposition:
         assert len(proc3.execution_timestamps) == 3
 
     def test_system_containing_systems(self):
-        """Test System containing other System instances (hierarchical)."""
+        """Test System containing other System instances.
+
+        Tests hierarchical system composition.
+        """
         # Create leaf processes
         proc1 = MockProcess(name="proc1", interval_ns=30_000_000)
         proc2 = MockProcess(name="proc2", interval_ns=30_000_000)
@@ -142,7 +149,10 @@ class TestMultiRateCoordination:
     """Test complex timing scenarios with multiple execution rates."""
 
     def test_complex_timing_scenarios(self):
-        """Test coordination with processes at 10ms, 30ms, 70ms intervals."""
+        """Test coordination with mixed timing intervals.
+
+        Tests processes at 10ms, 30ms, 70ms intervals.
+        """
         # Create processes with different intervals
         fast_proc = MockTimedPipeline(
             name="fast", interval_ns=10_000_000
@@ -183,7 +193,8 @@ class TestMultiRateCoordination:
         """Test System properly isolates child state management."""
         from src.aifand.base.device import Sensor
 
-        # Create state-modifying processes that track what states they receive
+        # Create state-modifying processes that track what states they
+        # receive
         class StateTrackingProcess(MockProcess):
             def __init__(self, name: str):
                 super().__init__(name=name, interval_ns=50_000_000)
@@ -212,11 +223,13 @@ class TestMultiRateCoordination:
 
         result_states = system.execute(states)
 
-        # System should pass through input states unchanged (state isolation)
+        # System should pass through input states unchanged (state
+        # isolation)
         assert result_states == states
         assert result_states["data"].has_device("temp")
 
-        # Children should receive empty states (System's isolation design)
+        # Children should receive empty states (System's isolation
+        # design)
         # Note: Children may not have executed if they weren't ready
         if proc1.received_states is not None:
             assert proc1.received_states == {}
@@ -229,7 +242,8 @@ class TestAdvancedScenarios:
 
     def test_dynamic_modification_during_execution(self):
         """Test adding/removing children during execution."""
-        # Note: This tests structural modification, not runtime modification
+        # Note: This tests structural modification, not runtime
+        # modification
         system = System(name="dynamic_system")
 
         # Start with one process
@@ -240,7 +254,8 @@ class TestAdvancedScenarios:
         runner = FastRunner(name="test_runner", main_process=system)
         runner.run_for_duration(0.06)  # 60ms
 
-        # Calculate exact count: executions at 0ms and 50ms = 2 executions
+        # Calculate exact count: executions at 0ms and 50ms = 2
+        # executions
         initial_count = len(proc1.execution_timestamps)
         assert initial_count == 2
 
@@ -277,7 +292,8 @@ class TestAdvancedScenarios:
         runner.run_for_duration(0.1)  # 100ms
 
         # Calculate exact execution counts:
-        # fast_proc: executions at 0ms, 1ms, 2ms, ..., 99ms = 100 executions
+        # fast_proc: executions at 0ms, 1ms, 2ms, ..., 99ms = 100
+        # executions
         # slow_proc: execution at 0ms only (next would be at 500ms) = 1
         # execution
         assert len(fast_proc.execution_timestamps) == 100

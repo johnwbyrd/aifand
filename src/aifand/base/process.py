@@ -4,7 +4,8 @@ CRITICAL: Process base class MUST NOT store persistent state!
 State persistence is handled by concrete subclasses (Pipeline, System)
 that have explicit state management fields. The Process base class
 provides execution framework only.
-DO NOT ADD STATE STORAGE TO THIS FILE!  NOT IN ATTRIBUTES, NOT IN METHODS!
+DO NOT ADD STATE STORAGE TO THIS FILE!  NOT IN ATTRIBUTES, NOT IN
+METHODS!
 THIS MEANS YOU, CLAUDE!
 """
 
@@ -20,14 +21,13 @@ from .state import State
 
 
 class Process(Entity, ABC):
-    """Base class for computational units that transform thermal management.
+    """Base class for computational units in thermal management.
 
-    Base class for computational units that transform thermal management data.
-
-    A Process represents a computational unit that transforms states within
-    the system. Processes can contain child processes that execute in serial
-    order, forming execution pipelines. Each process receives a dictionary of
-    named states and produces a transformed dictionary of states.
+    A Process represents a computational unit that transforms states
+    within the system. Processes can contain child processes that
+    execute in serial order, forming execution pipelines. Each process
+    receives a dictionary of named states and produces a transformed
+    dictionary of states.
 
     Process supports two execution modes:
     1. Stateless execution via execute() for transformations
@@ -40,11 +40,12 @@ class Process(Entity, ABC):
       continues
     - Immutable input states: Input states are never modified (deep copy
       used)
-    - Mutable structure: Process structure can be modified for construction
+    - Mutable structure: Process structure can be modified for
+      construction
     - Template method timing: Subclasses override timing strategies
 
-    Subclasses must implement _process() and timing methods to define their
-    specific logic.
+    Subclasses must implement _process() and timing methods to define
+    their specific logic.
     """
 
     model_config = ConfigDict(extra="allow", frozen=False)
@@ -85,7 +86,8 @@ class Process(Entity, ABC):
         execution count.
 
         Args:
-            states: Dictionary of named states (e.g., "actual", "desired")
+            states: Dictionary of named states (e.g., "actual",
+                "desired")
 
         Returns:
             Dictionary of transformed states
@@ -110,7 +112,8 @@ class Process(Entity, ABC):
         Subclasses implement this method instead of execute().
 
         Args:
-            states: Dictionary of named states (e.g., "actual", "desired")
+            states: Dictionary of named states (e.g., "actual",
+                "desired")
 
         Returns:
             Dictionary of transformed states
@@ -124,12 +127,12 @@ class Process(Entity, ABC):
     def get_time(self) -> int:
         """Get current time in nanoseconds.
 
-        Returns nanosecond timestamp. Can be overridden by subclasses to use
-        alternative time sources like GPS clocks, NTP synchronization, or
-        other high-precision timing sources.
+        Returns nanosecond timestamp. Can be overridden by subclasses
+        to use alternative time sources like GPS clocks, NTP
+        synchronization, or other high-precision timing sources.
 
-        When running under a Runner, returns the runner's time source which
-        may be simulated time for testing.
+        When running under a Runner, returns the runner's time source
+        which may be simulated time for testing.
 
         Returns:
             Current time in nanoseconds since epoch
@@ -150,14 +153,17 @@ class Process(Entity, ABC):
         """Update execution count after successful process execution.
 
         Called automatically by execute() after successful completion.
-        Can be overridden by subclasses to customize execution count behavior.
+        Can be overridden by subclasses to customize execution count
+        behavior.
 
         Default implementation increments execution_count by 1.
         """
         self.execution_count += 1
 
     def get_next_execution_time(self) -> int:
-        """Calculate when the next execution should occur using modulo timing.
+        """Calculate when the next execution should occur.
+
+        Uses modulo timing for calculation.
 
         Returns:
             Next execution time in nanoseconds since epoch
@@ -169,8 +175,8 @@ class Process(Entity, ABC):
         """Initialize timing state for execution.
 
         Sets up timing control fields for this process.
-        Can be called by parent processes to initialize child timing state
-        before execution begins.
+        Can be called by parent processes to initialize child timing
+        state before execution begins.
         """
         self.start_time = self.get_time()
         self.execution_count = 0
@@ -179,7 +185,8 @@ class Process(Entity, ABC):
     def __lt__(self, other: "Process") -> bool:
         """Compare processes for heap ordering by UUID string.
 
-        This enables heapq to handle processes with identical execution times
+        This enables heapq to handle processes with identical execution
+        times
         by falling back to UUID comparison for consistent ordering.
         """
         return False
@@ -188,9 +195,11 @@ class Process(Entity, ABC):
 class Environment(Process, ABC):
     """Abstract base class for environment interfaces.
 
-    Environments interface with the physical or simulated world, reading sensor
-    values and applying actuator settings. They can read and modify sensors in
-    their output state, but should only read actuators from their input state.
+    Environments interface with the physical or simulated world, reading
+    sensor values and applying actuator settings. They can read and
+    modify
+    sensors in their output state, but should only read actuators from
+    their input state.
     """
 
     @abstractmethod
@@ -202,7 +211,8 @@ class Controller(Process, ABC):
     """Abstract base class for control logic.
 
     Controllers implement decision-making logic that determines actuator
-    settings based on sensor readings. They can read and modify actuators
+    settings based on sensor readings. They can read and modify
+    actuators
     in their output state, but should only read sensors from their input
     state.
     """

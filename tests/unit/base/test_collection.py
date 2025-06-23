@@ -62,7 +62,10 @@ class TestCollectionProtocol:
         assert isinstance(system.process_heap, list)  # heapq uses list
 
     def test_collection_edge_cases(self):
-        """Test empty collections, missing processes, duplicate names."""
+        """Test collection edge cases.
+
+        Tests empty collections, missing processes, duplicate names.
+        """
         pipeline = Pipeline(name="test_pipeline")
         system = System(name="test_system")
 
@@ -89,7 +92,10 @@ class TestCollectionProtocol:
             assert found_process is not None
 
     def test_collection_child_management(self):
-        """Test count(), append(), remove(), has(), get() work correctly."""
+        """Test collection child management methods.
+
+        Tests count(), append(), remove(), has(), get() work correctly.
+        """
         pipeline = Pipeline(name="test_pipeline")
         system = System(name="test_system")
 
@@ -122,7 +128,10 @@ class TestCollectionProtocol:
             assert collection.count() == 2
 
     def test_collection_timing_integration(self):
-        """Test initialize_timing() propagates correctly to all children."""
+        """Test initialize_timing() propagation.
+
+        Tests propagation correctly to all children.
+        """
         pipeline = Pipeline(name="test_pipeline")
         system = System(name="test_system")
 

@@ -1,8 +1,9 @@
 """Mock classes for testing thermal management processes.
 
-These are temporary scaffolding classes that provide basic implementations
-of Environment and Controller for testing purposes. They will be replaced
-by real implementations as the system is developed.
+These are temporary scaffolding classes that provide basic
+implementations of Environment and Controller for testing purposes.
+They will be replaced by real implementations as the system is
+developed.
 """
 
 from typing import Dict, List
@@ -19,7 +20,10 @@ class MockEnvironment(Environment):
     """Basic Environment mock for testing."""
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Default implementation that passes states through unchanged."""
+        """Pass states through unchanged.
+
+        Default implementation for testing.
+        """
         return states
 
 
@@ -27,7 +31,10 @@ class MockController(Controller):
     """Basic Controller mock for testing."""
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Default implementation that passes states through unchanged."""
+        """Pass states through unchanged.
+
+        Default implementation for testing.
+        """
         return states
 
 
@@ -102,7 +109,10 @@ class MockTimedPipeline(Pipeline):
     )
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Track execution when called by System and pass states through."""
+        """Track execution and pass states through.
+
+        Called by System during execution.
+        """
         self.execution_timestamps.append(self.get_time())
         self.execution_sequence.append(self.execution_count)
         self.received_states_log.append(states.copy())

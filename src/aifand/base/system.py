@@ -26,7 +26,8 @@ class System(Collection):
     with different update rates.
 
     System queries children for timing preferences and executes ready
-    children independently (parallel coordination). Each child manages its
+    children independently (parallel coordination). Each child manages
+    its
     own state.
 
     Key characteristics:
@@ -68,7 +69,15 @@ class System(Collection):
         return False
 
     def has(self, name: str) -> bool:
-        """Check if a process with the given name exists in the system."""
+        """Check if a process exists in the system.
+
+        Args:
+            name: Name of process to check
+
+        Returns:
+            True if process exists
+
+        """
         return any(process.name == name for _, process in self.process_heap)
 
     def get(self, name: str) -> Process | None:
@@ -85,7 +94,8 @@ class System(Collection):
         to the earliest child's next execution time.
 
         Returns:
-            Earliest child's next execution time, or system's own time if
+            Earliest child's next execution time, or system's own time
+            if
             no children
 
         """
@@ -101,9 +111,9 @@ class System(Collection):
     def initialize_timing(self) -> None:
         """Initialize timing state for system and all children.
 
-        Propagates timing initialization to all child processes in the
-        priority queue to ensure the entire process tree has clean timing
-        state before execution.
+        Propagates timing initialization to all child processes in
+        the priority queue to ensure the entire process tree has clean
+        timing state before execution.
         """
         # Initialize our own timing
         super().initialize_timing()
@@ -135,11 +145,13 @@ class System(Collection):
             actual_next_time = process.get_next_execution_time()
 
             if actual_next_time <= current_time:
-                # Process is ready - remove from heap and add to ready list
+                # Process is ready - remove from heap and add to ready
+                # list
                 heapq.heappop(self.process_heap)
                 ready_processes.append(process)
             elif actual_next_time != next_time:
-                # Process timing changed but not ready - update heap entry
+                # Process timing changed but not ready - update heap
+                # entry
                 heapq.heappop(self.process_heap)
                 heapq.heappush(self.process_heap, (actual_next_time, process))
             else:
@@ -149,13 +161,15 @@ class System(Collection):
         return ready_processes
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Execute ready child processes independently (parallel coordination).
+        """Execute ready child processes independently.
 
-        System finds children that are ready to execute based on their timing
-        and executes them independently. Each child manages its own state.
+        System finds children that are ready to execute based on their
+        timing and executes them independently. Each child manages its
+        own state.
 
         Args:
-            states: Dictionary of named states (typically empty for System)
+            states: Dictionary of named states (typically empty for
+                System)
 
         Returns:
             Dictionary of states (passthrough for System)
@@ -163,7 +177,8 @@ class System(Collection):
         """
         ready_children = self._get_ready_children()
 
-        # Execute ready children independently and update heap with new timing
+        # Execute ready children independently and update heap with new
+        # timing
         for child in ready_children:
             try:
                 # Each child manages its own states independently
@@ -183,7 +198,8 @@ class System(Collection):
                     f"{self.name}: {e}",
                     exc_info=True,
                 )
-                # Re-add child to heap even on failure to continue scheduling
+                # Re-add child to heap even on failure to continue
+                # scheduling
                 updated_next_time = child.get_next_execution_time()
                 heapq.heappush(self.process_heap, (updated_next_time, child))
                 continue

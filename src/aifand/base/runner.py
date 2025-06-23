@@ -1,4 +1,4 @@
-"""Runner classes for autonomous execution of thermal management processes."""
+"""Runner classes for autonomous execution of thermal management."""
 
 import logging
 import threading
@@ -13,12 +13,12 @@ from .process import Process
 
 
 class TimeSource:
-    """Encapsulates time source discovery mechanism for process execution.
+    """Thread-local time source discovery for process execution.
 
-    This class manages thread-local storage of runner instances to provide
-    time sources for processes executing in different threads. The
-    encapsulation allows for future changes to the time source discovery
-    mechanism without modifying Process code.
+    This class manages thread-local storage of runner instances to
+    provide time sources for processes executing in different threads.
+    The encapsulation allows for future changes to the time source
+    discovery mechanism without modifying Process code.
     """
 
     _thread_locals = threading.local()
@@ -53,9 +53,10 @@ class TimeSource:
 class Runner(Entity, ABC):
     """Base class for autonomous execution of processes.
 
-    Runner manages the execution lifecycle of a main process, calling its
-    execute() method according to the process's timing preferences. Runner
-    respects get_next_execution_time() and sleeps between executions.
+    Runner manages the execution lifecycle of a main process, calling
+    its execute() method according to the process's timing preferences.
+    Runner respects get_next_execution_time() and sleeps between
+    executions.
 
     Key characteristics:
     - Runs in separate thread for non-blocking operation
@@ -72,7 +73,8 @@ class Runner(Entity, ABC):
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         self._logger = logging.getLogger(
-            f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}"
+            f"{self.__class__.__module__}.{self.__class__.__name__}."
+            f"{self.name}"
         )
         self._thread: threading.Thread | None = None
         self._stop_requested = False
@@ -161,8 +163,9 @@ class StandardRunner(Runner):
     """Standard runner that respects real-time execution.
 
     StandardRunner executes the main process according to its timing
-    preferences, sleeping between executions to maintain proper intervals.
-    This is the normal production runner for thermal management.
+    preferences, sleeping between executions to maintain proper
+    intervals. This is the normal production runner for thermal
+    management.
     """
 
     def get_time(self) -> int:
@@ -214,9 +217,9 @@ class StandardRunner(Runner):
 class FastRunner(Runner):
     """Test runner that accelerates time for rapid testing.
 
-    FastRunner manipulates time to execute processes as quickly as possible
-    without waiting for real time to pass. This enables rapid testing of
-    long-term thermal behavior and timing scenarios.
+    FastRunner manipulates time to execute processes as quickly as
+    possible without waiting for real time to pass. This enables rapid
+    testing of long-term thermal behavior and timing scenarios.
 
     Key characteristics:
     - Maintains internal simulation time
@@ -256,10 +259,10 @@ class FastRunner(Runner):
             self._simulation_time = target_time
 
     def _should_continue_execution(self) -> bool:
-        """Check if execution should continue based on stop flag and safety.
+        """Check if execution should continue.
 
-        Checks stop flag and safety limits to determine if execution should
-        continue.
+        Checks stop flag and safety limits to determine if execution
+        should continue.
 
         Returns:
             True if execution should continue
@@ -287,7 +290,7 @@ class FastRunner(Runner):
             self._advance_time_to(next_time)
 
     def run_for_duration(self, duration_seconds: float) -> None:
-        """Run simulation for specified duration without real-time delays.
+        """Run simulation for specified duration without delays.
 
         Args:
             duration_seconds: Simulation duration in seconds
@@ -316,7 +319,7 @@ class FastRunner(Runner):
             TimeSource.clear_current()
 
     def _execution_loop(self) -> None:
-        """FastRunner uses run_for_duration instead of thread-based execution.
+        """FastRunner uses run_for_duration instead of threading.
 
         This runner doesn't support threaded execution - use
         run_for_duration().

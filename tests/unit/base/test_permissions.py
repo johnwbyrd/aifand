@@ -111,13 +111,15 @@ class TestDevicePermissions:
 
         state = State()
 
-        # PID should be able to modify actuators (inherits from Controller)
+        # PID should be able to modify actuators (inherits from
+        # Controller)
         pid_actuator = PIDActuatorModifier(name="pid_actuator")
         result_states = pid_actuator.execute({"actual": state})
         assert "actual" in result_states
         assert result_states["actual"].has_device("cpu_fan")
 
-        # PID should NOT be able to modify sensors (inherits from Controller)
+        # PID should NOT be able to modify sensors (inherits from
+        # Controller)
         pid_sensor = PIDSensorModifier(name="pid_sensor")
         with pytest.raises(
             PermissionError,
@@ -126,10 +128,14 @@ class TestDevicePermissions:
             pid_sensor.execute({"actual": state})
 
     def test_permission_bypass_outside_process_context(self):
-        """Test that permissions don't apply when not called from a process."""
+        """Test permissions don't apply outside process context.
+
+        Tests when not called from a process.
+        """
         sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
         state = State()
 
-        # This should work - no process in call stack means no permission check
+        # This should work - no process in call stack means no
+        # permission check
         new_state = state.with_device(sensor)
         assert new_state.has_device("cpu_temp")
