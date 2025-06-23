@@ -1,145 +1,152 @@
 """System class for independent timing coordination of multiple thermal control flows."""
 
-from typing import Dict, List
+import heapq
+from typing import Dict, List, Tuple
 
+from pydantic import Field
+
+from .collection import Collection
 from .process import Process
 from .state import State
 
 
-class System(Process):
-    """Independent timing coordination for multiple thermal control flows.
+class System(Collection):
+    """Independent timing coordination for parallel thermal control coordination.
 
     System manages multiple Pipelines or other Systems with independent timing,
     where each child executes when its individual timing requirements are met.
-    This enables coordination across thermal zones with different update rates
-    and thermal characteristics.
+    This enables coordination across thermal zones with different update rates.
 
-    System queries children for timing preferences rather than imposing intervals,
-    implementing an "ask-don't-tell" coordination model that respects individual
-    child timing needs while maintaining execution order based on readiness.
+    System queries children for timing preferences and executes ready children
+    independently (parallel coordination). Each child manages its own state.
 
     Key characteristics:
-    - Independent timing: Children execute when ready, not in predetermined order
-    - Uniform child handling: Treats Pipeline and System children uniformly through Process interface
-    - State isolation: Each child manages its own state by default
-    - Coordination hooks: Enable parent-child communication without automatic state sharing
-    - Hierarchical composition: Systems can contain other Systems for scalable coordination
+    - Independent timing: Children execute when ready based on their own timing
+    - Parallel coordination: Ready children execute independently
+    - State isolation: Each child manages its own state
+    - Hierarchical composition: Systems can contain other Systems
     """
 
-    def _calculate_next_tick_time(self) -> int:
-        """Calculate when the next execution should occur using independent timing.
+    # Child process storage as priority queue (next_time, process)
+    process_heap: List[Tuple[int, Process]] = Field(
+        default_factory=list, description="Priority queue of (next_execution_time, process) for parallel coordination"
+    )
 
-        System queries all children for their timing preferences and returns
-        the earliest requested time. This implements the "ask-don't-tell"
-        coordination model where children express timing needs.
+    # Collection protocol implementation
+    def count(self) -> int:
+        """Get the number of processes in the system."""
+        return len(self.process_heap)
 
-        Returns:
-            Nanosecond timestamp when next execution should occur
+    def append(self, process: Process) -> None:
+        """Add a process to the system priority queue."""
+        next_time = process.get_next_execution_time()
+        heapq.heappush(self.process_heap, (next_time, process))
 
+    def remove(self, name: str) -> bool:
+        """Remove a process by name. Returns True if removed, False if not found."""
+        for i, (_, process) in enumerate(self.process_heap):
+            if process.name == name:
+                # Remove item and re-heapify
+                self.process_heap.pop(i)
+                heapq.heapify(self.process_heap)
+                return True
+        return False
+
+    def has(self, name: str) -> bool:
+        """Check if a process with the given name exists in the system."""
+        return any(process.name == name for _, process in self.process_heap)
+
+    def get(self, name: str) -> Process | None:
+        """Get a process by name. Returns None if not found."""
+        for _, process in self.process_heap:
+            if process.name == name:
+                return process
+        return None
+
+    def initialize_timing(self) -> None:
+        """Initialize timing state for system and all children.
+
+        Propagates timing initialization to all child processes in the
+        priority queue to ensure the entire process tree has clean timing
+        state before execution.
         """
-        if not self.children:
-            # No children - use our own interval
-            return self.start_time + (self.execution_count * self.interval_ns)
+        # Initialize our own timing
+        super().initialize_timing()
 
-        # Query all children for their timing preferences
-        earliest_time = None
-        current_time = self.get_time()
+        # Initialize all children in priority queue
+        for _, process in self.process_heap:
+            process.initialize_timing()
 
-        for child in self.children:
-            # Initialize child timing if needed
-            if not hasattr(child, "start_time") or child.start_time == 0:
-                child._initialize_timing()
+    def _get_ready_children(self) -> List[Process]:
+        """Get children that are ready to execute based on timing.
 
-            # Get child's preferred execution time
-            child_next_time = child._calculate_next_tick_time()
-
-            if earliest_time is None or child_next_time < earliest_time:
-                earliest_time = child_next_time
-
-        return earliest_time if earliest_time is not None else current_time
-
-    def _select_processes_to_execute(self) -> List[Process]:
-        """Select child processes ready for execution based on timing.
-
-        Returns children whose next execution time is less than or equal
-        to current time, enabling independent timing coordination.
+        Uses priority queue to efficiently find ready processes.
 
         Returns:
             List of child processes ready for execution
 
         """
-        if not self.children:
+        if not self.process_heap:
             return []
 
-        ready_processes = []
+        ready_processes: List[Process] = []
         current_time = self.get_time()
+        updated_heap: List[Tuple[int, Process]] = []
 
-        for child in self.children:
-            # Ensure child timing is initialized
-            if not hasattr(child, "start_time") or child.start_time == 0:
-                child._initialize_timing()
+        # Pop ready processes from the front of the heap
+        while self.process_heap:
+            next_time, process = self.process_heap[0]
 
-            # Check if child is ready to execute
-            child_next_time = child._calculate_next_tick_time()
-            if child_next_time <= current_time:
-                ready_processes.append(child)
+            # Update process timing in case it changed
+            actual_next_time = process.get_next_execution_time()
+
+            if actual_next_time <= current_time:
+                # Process is ready - remove from heap and add to ready list
+                heapq.heappop(self.process_heap)
+                ready_processes.append(process)
+                # Re-add with updated time for next execution
+                updated_next_time = process.get_next_execution_time()
+                heapq.heappush(updated_heap, (updated_next_time, process))
+            elif actual_next_time != next_time:
+                # Process timing changed but not ready - update heap entry
+                heapq.heappop(self.process_heap)
+                heapq.heappush(self.process_heap, (actual_next_time, process))
+            else:
+                # Process not ready and timing unchanged - stop checking
+                break
+
+        # Add back the processes that executed with their updated times
+        for item in updated_heap:
+            heapq.heappush(self.process_heap, item)
 
         return ready_processes
 
-    def _execute_selected_processes(self, processes: List[Process]) -> None:
-        """Execute ready children independently and update persistent states.
+    def execute(self, states: Dict[str, State]) -> Dict[str, State]:
+        """Execute ready child processes independently (parallel coordination).
 
-        Overrides default implementation to handle System's persistent
-        state management during timing-driven execution. Each child
-        manages its own state with isolation by default.
-
-        Args:
-            processes: List of processes ready for execution
-
-        """
-        if not processes:
-            # No children ready - execute this system's logic directly
-            try:
-                self.get_logger().debug(f"Executing system {self.name} with no ready children")
-                self._process({})
-            except PermissionError:
-                # Permission errors bubble up as programming errors
-                raise
-            except Exception as e:
-                self.get_logger().error(f"System {self.name} failed during timing execution: {e}", exc_info=True)
-                # Continue with timing loop (error resilience)
-            return
-
-        # Execute ready children independently
-        for process in processes:
-            try:
-                self.get_logger().debug(f"Executing ready child process: {process.name}")
-                # Children manage their own states independently
-                process.execute({})
-
-            except PermissionError:
-                # Permission errors bubble up as programming errors
-                raise
-            except Exception as e:
-                self.get_logger().error(
-                    f"Child process {process.name} failed during System timing execution: {e}", exc_info=True
-                )
-                # Continue with other processes (error resilience for thermal systems)
-                continue
-
-    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Handle System-specific state transformation when no children exist.
-
-        This is called when System has no children (edge case). Normally
-        System will have Pipeline or System children, so the inherited
-        execute() method executes the children instead of calling this.
+        System finds children that are ready to execute based on their timing
+        and executes them independently. Each child manages its own state.
 
         Args:
-            states: Dictionary of states to transform
+            states: Dictionary of named states (typically empty for System)
 
         Returns:
-            Dictionary of states (passthrough when no children)
+            Dictionary of states (passthrough for System)
 
         """
-        self.get_logger().warning(f"System {self.name} has no children - no Pipelines or Systems configured")
+        ready_children = self._get_ready_children()
+
+        # Execute ready children independently
+        for child in ready_children:
+            try:
+                # Each child manages its own states independently
+                child.execute({})
+            except PermissionError:
+                # Permission errors bubble up as programming errors
+                raise
+            except Exception as e:
+                self._logger.error(f"Child process {child.name} failed in system {self.name}: {e}", exc_info=True)
+                # Continue with other children (error resilience)
+                continue
+
         return states

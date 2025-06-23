@@ -6,69 +6,60 @@ This document outlines the remaining implementation tasks for `aifand`.
 
 ---
 
-## System Implementation
+## System Testing (Phase 3)
 
 ### Objective
-Create the System class for coordinating multiple Pipelines in complex thermal management scenarios.
+Create comprehensive tests for System independent timing coordination with multi-rate children and hierarchical composition.
 
 ### Tasks
-1. **Implement `System` Process** (src/aifand/base/system.py):
-   - Create `System` class extending Process for multi-Pipeline coordination
-   - Support both sequential and parallel Pipeline execution models
-   - Implement Pipeline management: add, remove, configure
-   - Add comprehensive status aggregation across managed Pipelines
 
-2. **System Execution Models**:
-   - **Parallel mode**: Concurrent Pipeline execution with result aggregation
-   - **Sequential mode**: Ordered Pipeline execution for dependent thermal zones
-   - **Mixed mode**: Parallel groups with sequential group execution
-   - Resource coordination and thermal policy management across Pipelines
+1. **Create System Test Mocks** (tests/unit/base/mocks.py):
+   - **MockTimedPipeline**: Pipeline with configurable intervals (10-70ms), execution tracking with nanosecond timestamps
+   - **MockTimedSystem**: System with execution history for hierarchical testing
+   - **MockProcess**: Simple Process for mixed child testing
+   - All mocks track: execution timestamps, sequence numbers, received states, call history
 
-3. **System Testing**:
-   - Multi-Pipeline coordination val idation
-   - Parallel vs sequential execution testing
-   - Resource contention and conflict resolution
-   - Hierarchical System composition (Systems containing Systems)
+2. **Implement System Tests** (tests/unit/base/test_system.py):
 
+   **TestSystemBasics**:
+   - test_system_creation, test_system_inheritance
+   - test_system_with_no_children (edge case)
+   - test_system_can_be_imported
 
-  Phase 1: Process Infrastructure Updates
+   **TestSystemTimingCoordination**:
+   - test_multi_rate_pipeline_coordination:
+     * Pipeline A: 10ms, B: 30ms, C: 70ms intervals
+     * Run 150ms total, verify execution patterns match expected timing
+     * A executes: 10,20,30,40,50,60,70,80,90,100,110,120,130,140,150ms
+     * B executes: 30,60,90,120,150ms, C executes: 70,140ms
+   - test_simultaneous_execution_order: Pipelines (20ms, 40ms) ready at same time
+   - test_calculate_next_tick_time_accuracy: Verify earliest child time selection
+   - test_select_processes_to_execute_precision: Verify ready child identification
 
-  1. Extract _initialize_timing() method from Process.start()
-    - Move initialization logic (start_time, execution_count, stop_requested, _current_states) to new method
-    - Update Process.start() to call _initialize_timing()
-    - Run existing tests to verify no regressions
+   **TestSystemHierarchicalComposition**:
+   - test_system_containing_pipelines: Mixed Pipeline children
+   - test_system_containing_systems: System children with their own timing
+   - test_nested_system_coordination:
+     * Top System: MockPipeline (15ms), Sub-System (25ms)
+     * Sub-System contains: MockPipeline X (10ms), Y (35ms)
+     * Run 100ms, verify nested timing coordination
+   - test_deep_nesting: 3+ levels of System hierarchy
 
-  Phase 2: Basic System Implementation
+   **TestSystemStateIsolation**:
+   - test_children_receive_empty_states: Verify System passes {} to children
+   - test_state_independence: Children don't interfere with each other
+   - test_no_state_persistence_in_system: Verify System stores no persistent state
 
-  2. Implement System class structure in src/aifand/base/system.py
-    - Extend Process with states field (like Pipeline)
-    - Add basic class documentation and imports
-  3. Implement System timing coordination methods
-    - _calculate_next_tick_time(): Query children and return earliest time
-    - _select_processes_to_execute(): Return children ready to execute
-    - _execute_selected_processes(): Execute ready children with state management
-    - _process(): Handle edge case of System with no children
-  4. Update module exports
-    - Add System to src/aifand/base/__init__.py
+   **TestSystemErrorHandling**:
+   - test_child_failure_isolation: One child fails, others continue
+   - test_permission_error_propagation: Permission errors bubble up
+   - test_timing_error_resilience: System continues despite child timing errors
 
-  Phase 3: System Testing
-
-  5. Create System test mocks in tests/unit/base/mocks.py
-    - MockProcess with configurable timing intervals
-    - Timing behavior variants for coordination testing
-  6. Implement comprehensive System tests in tests/unit/base/test_system.py
-    - Basic System creation and structure
-    - Timing coordination with multiple children
-    - Mixed children (Pipelines and Systems)
-    - State isolation verification
-    - Error handling and failure isolation
-    - Hierarchical composition testing
-
-  Phase 4: Integration Verification
-
-  7. Run full test suite
-    - Verify no regressions in existing Process/Pipeline functionality
-    - Confirm System integrates properly with existing architecture
+3. **Test Execution Requirements**:
+   - Use threading for timing-driven tests with proper cleanup
+   - Allow small timing tolerances in assertions (±5ms)
+   - Focus on relative timing and execution order verification
+   - Run tests quickly (all intervals <100ms, total test time <500ms per test)
 
 ---
 

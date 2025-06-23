@@ -1,149 +1,96 @@
-"""Pipeline class for single thermal control flows with timing and state persistence."""
+"""Pipeline class for single thermal control flows with serial execution."""
 
 from typing import Dict, List
 
 from pydantic import Field
 
-from .process import Controller, Environment, Process
+from .collection import Collection
+from .process import Process
 from .state import State
 
 
-class Pipeline(Process):
-    """Sequential execution unit for thermal control with timing and state persistence.
+class Pipeline(Collection):
+    """Sequential execution unit for serial thermal control coordination.
 
-    Pipeline manages a single logical control flow (e.g., CPU thermal management)
-    through Environment → Controllers stages. It maintains named states that persist
-    between executions and provides timing control for autonomous operation.
+    Pipeline manages a single logical control flow by executing child processes
+    sequentially in order. It passes states through children serially:
+    input → child1.execute() → child2.execute() → ... → output
 
-    Pipeline can operate in two ways:
-    - Timing-driven: start() runs autonomous timing loop using persistent states
-    - Process execution: execute() called by parent System, processes input states
-
-    The same execute() method handles both cases - timing-driven mode calls it
-    repeatedly on persistent states, process execution ignores persistent states.
+    Pipeline maintains its own execution rate and coordinates timing,
+    but does not store persistent state - it's a pure coordinator.
     """
 
-    # Persistent state for timing-driven execution
-    states: Dict[str, State] = Field(
-        default_factory=dict, description="Named states that persist between timing-driven executions"
+    # Child process storage for serial execution
+    children: List[Process] = Field(
+        default_factory=list, description="Ordered list of child processes for serial execution"
     )
 
-    # Timing configuration
-    interval_ns: int = Field(
-        default=100_000_000,  # 100ms in nanoseconds
-        description="Execution interval in nanoseconds for timing-driven mode",
-    )
+    # Collection protocol implementation
+    def count(self) -> int:
+        """Get the number of processes in the pipeline."""
+        return len(self.children)
 
-    # Runtime control (important for remote monitoring and debugging)
-    start_time: int = Field(default=0, description="Start time of current timing loop execution (nanoseconds)")
-    execution_count: int = Field(default=0, description="Number of completed execution cycles")
-    stop_requested: bool = Field(default=False, description="Whether stop has been requested")
+    def append(self, process: Process) -> None:
+        """Add a process to the end of the pipeline."""
+        self.children.append(process)
 
-    def _calculate_next_tick_time(self) -> int:
-        """Calculate when the next execution should occur using unified timing.
+    def remove(self, name: str) -> bool:
+        """Remove a process by name. Returns True if removed, False if not found."""
+        for i, child in enumerate(self.children):
+            if child.name == name:
+                self.children.pop(i)
+                return True
+        return False
 
-        Pipeline implements unified timing where all children execute together
-        at the same interval. Uses modulo-based scheduling for consistent
-        intervals regardless of execution duration.
+    def has(self, name: str) -> bool:
+        """Check if a process with the given name exists in the pipeline."""
+        return any(child.name == name for child in self.children)
 
-        Returns:
-            Nanosecond timestamp when next execution should occur
+    def get(self, name: str) -> Process | None:
+        """Get a process by name. Returns None if not found."""
+        for child in self.children:
+            if child.name == name:
+                return child
+        return None
 
+    def initialize_timing(self) -> None:
+        """Initialize timing state for pipeline and all children.
+
+        Propagates timing initialization to all child processes to ensure
+        the entire process tree has clean timing state before execution.
         """
-        return self.start_time + (self.execution_count * self.interval_ns)
+        # Initialize our own timing
+        super().initialize_timing()
 
-    def _select_processes_to_execute(self) -> List[Process]:
-        """Select child processes for unified execution.
+        # Initialize all children
+        for child in self.children:
+            child.initialize_timing()
 
-        Pipeline implements unified timing where all children execute together
-        at shared intervals, preserving serial execution order.
+    def execute(self, states: Dict[str, State]) -> Dict[str, State]:
+        """Execute child processes serially and return transformed states.
 
-        Returns:
-            List of all child processes for unified execution
-
-        """
-        return self.children
-
-    def _execute_selected_processes(self, processes: List[Process]) -> None:
-        """Execute selected child processes and update persistent states.
-
-        Overrides the default implementation to handle Pipeline's persistent
-        state management during timing-driven execution.
+        Passes states through children sequentially:
+        input → child1.execute() → child2.execute() → ... → output
 
         Args:
-            processes: List of processes ready for execution
+            states: Dictionary of named states to transform
+
+        Returns:
+            Dictionary of transformed states after serial execution
 
         """
-        if not processes:
-            # No children - execute this pipeline's logic directly
+        current_states = states
+
+        # Execute children serially, passing states through the pipeline
+        for child in self.children:
             try:
-                self.get_logger().debug(f"Executing pipeline {self.name} with no children")
-                self.states = self._process(self.states)
+                current_states = child.execute(current_states)
             except PermissionError:
                 # Permission errors bubble up as programming errors
                 raise
             except Exception as e:
-                self.get_logger().error(f"Pipeline {self.name} failed during timing execution: {e}", exc_info=True)
-                # Continue with timing loop (error resilience)
-            return
+                self._logger.error(f"Child process {child.name} failed in pipeline {self.name}: {e}", exc_info=True)
+                # Continue with next child (error resilience)
+                continue
 
-        # Execute children as serial pipeline and update persistent states
-        try:
-            self.get_logger().debug(f"Executing pipeline {self.name} with {len(processes)} children")
-            self.states = self.execute(self.states)
-        except PermissionError:
-            # Permission errors bubble up as programming errors
-            raise
-        except Exception as e:
-            self.get_logger().error(f"Pipeline {self.name} failed during timing execution: {e}", exc_info=True)
-            # Continue with timing loop (error resilience)
-
-    def set_environment(self, environment: Environment) -> None:
-        """Set the Environment process as the first child in the pipeline.
-
-        Replaces any existing Environment and places it before all Controllers.
-        Following thermal control convention, Environment should execute first
-        to read sensor values.
-
-        Args:
-            environment: Environment process to set as first pipeline stage
-
-        """
-        # Remove any existing Environment processes
-        self.children = [child for child in self.children if not isinstance(child, Environment)]
-
-        # Insert Environment at the beginning
-        self.children.insert(0, environment)
-
-        self.get_logger().debug(f"Set environment {environment.name} for pipeline {self.name}")
-
-    def add_controller(self, controller: Controller) -> None:
-        """Add a Controller process after the Environment in the pipeline.
-
-        Controllers are added in the order they are registered and execute
-        after the Environment. This follows thermal control convention where
-        Environment reads sensors first, then Controllers process the data.
-
-        Args:
-            controller: Controller process to add to the pipeline
-
-        """
-        self.children.append(controller)
-        self.get_logger().debug(f"Added controller {controller.name} to pipeline {self.name}")
-
-    def _process(self, states: Dict[str, State]) -> Dict[str, State]:
-        """Handle Pipeline-specific state transformation when no children exist.
-
-        This is called when Pipeline has no children (unusual case). Normally
-        Pipeline will have Environment + Controllers as children, so the inherited
-        execute() method executes the children pipeline instead of calling this.
-
-        Args:
-            states: Dictionary of states to transform
-
-        Returns:
-            Dictionary of states (passthrough when no children)
-
-        """
-        self.get_logger().warning(f"Pipeline {self.name} has no children - no Environment or Controllers configured")
-        return states
+        return current_states

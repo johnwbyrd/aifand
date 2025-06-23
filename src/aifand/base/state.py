@@ -86,10 +86,14 @@ class State(BaseModel):
             frame_locals = frame_info.frame.f_locals
             if (
                 "self" in frame_locals
-                and hasattr(frame_locals["self"], "_process")
+                and hasattr(frame_locals["self"], "execute")
                 and hasattr(frame_locals["self"], "__class__")
             ):
-                return frame_locals["self"]
+                # Check if it's actually a Process instance
+                from .process import Process
+
+                if isinstance(frame_locals["self"], Process):
+                    return frame_locals["self"]
         return None
 
     def __repr__(self) -> str:

@@ -12,14 +12,9 @@ The `aifand` architecture automatically discovers and learns the thermal propert
 
 The `Entity` class serves as the foundational base for all objects within the system. Each entity has a unique identifier (`uuid`) and human-readable name, with support for arbitrary additional properties through pydantic's `extra="allow"` configuration.
 
-**Implementation details:**
-- Inherits from `pydantic.BaseModel` with `frozen=True` for immutability
-- Automatic UUID generation via `uuid4()` if not provided
-- Supports arbitrary key-value pairs alongside core fields
-- Full JSON serialization/deserialization support
-- String representation shows all fields for debugging
+Implementation details include inheritance from `pydantic.BaseModel` with `frozen=True` for immutability, automatic UUID generation via `uuid4()` if not provided, support for arbitrary key-value pairs alongside core fields, full JSON serialization and deserialization support, and string representation showing all fields for debugging.
 
-All core classes (`Device`, `Process`, `System`) inherit from `Entity` to ensure consistent identification, serialization, and extensibility across the architecture.
+All core classes (`Device`, `Process`, `Collection`) inherit from `Entity` to ensure consistent identification, serialization, and extensibility across the architecture.
 
 ### Data Models
 
@@ -31,189 +26,59 @@ A `State` represents a snapshot of device properties at a specific moment, imple
 
 ### Process
 
-The `Process` class represents computational units that transform data within the system. Processes support two execution modes: immediate execution via `execute()` for stateless transformations, and timing-driven execution via `start()` for autonomous thermal control loops. This design enables both simple transformations (Controllers, Environments) and complex coordination (Pipeline, System).
+The `Process` class represents computational units that transform thermal management data. Process provides a single `execute()` method that receives a dictionary of named states and returns a transformed dictionary of states. Process is a pure execution unit with no persistent state storage and no children.
 
-**Immediate Execution Mode:**
-- **Stateless operation**: `execute()` receives dictionary of named states, returns transformed states
-- **Serial pipeline**: Child processes execute in order with state passthrough
-- **Immutable data flow**: Input states are deep-copied to prevent modification
-- **Error resilience**: Exceptions caught, logged, execution continues with passthrough behavior
-- **Pipeline manipulation**: Dynamic child addition, insertion, and removal
-- **Per-process logging**: Each process gets its own hierarchical logger
+Process includes timing infrastructure with `interval_ns` field for execution intervals, `start_time` for timing loop initialization, `execution_count` for tracking completed cycles, and `get_next_execution_time()` method for calculating when next execution should occur using modulo timing. The timing system uses nanosecond precision with `get_time()` method returning `time.monotonic_ns()`.
 
-**Timing-Driven Execution:**
-- **Autonomous operation**: `start()` method runs timing loop until `stop()` called
-- **Template method pattern**: Overridable methods define timing and execution strategies
-- **Coordination hooks**: Before/after process hooks enable parent-child communication
-- **Graceful shutdown**: Responsive stop mechanism with cleanup
+Process execution characteristics include immutable data flow where input states are never modified, error resilience where exceptions are caught and logged without aborting thermal control, and per-process logging with hierarchical logger names.
 
-**Timing Infrastructure (Optional):**
-Process subclasses can implement timing-driven execution by overriding these methods:
-- `_calculate_next_tick_time()`: When should the next execution occur?
-- `_select_processes_to_execute()`: Which child processes are ready to execute?
-- `_execute_selected_processes()`: How should selected processes be executed?
-- `_before_process()` / `_after_process()`: Coordination hooks around execution
-- `_before_child_process()` / `_after_child_process()`: Hooks around child execution
+Device modification permissions enforce thermal management domain rules through runtime validation. Environment processes can read and modify both Sensors and Actuators (hardware interface responsibility), while Controller processes can only modify Actuators (decision-making responsibility). This separation prevents Controllers from corrupting sensor readings while allowing proper thermal control. Permission checking uses call stack inspection to identify the modifying process and validates against a class-based permission matrix.
 
-**Execution behavior:**
-- If a process has no children, it executes its own `_process()` method
-- If a process has children, execution strategy depends on timing implementation
-- Failed processes log errors but don't abort thermal control (critical for safety)
-- PermissionError exceptions bubble up as programming errors (unlike operational failures)
+An `Environment` can read and modify sensors but should only read actuators from its input state. A `Controller` can read and modify actuators but should only read sensors from its input state.
 
-**Pipeline manipulation:**
-- `append_child(process)` - Add process to end of pipeline
-- `insert_before(target_name, process)` - Insert process before named target (raises ValueError if not found)
-- `insert_after(target_name, process)` - Insert process after named target (raises ValueError if not found)
-- `remove_child(name)` - Remove process by name (returns bool indicating success)
+### Collection
 
-These methods enable dynamic pipeline construction and reconfiguration, particularly useful for System classes that need to build execution pipelines based on discovered hardware or operating conditions.
+The `Collection` class defines the coordination protocol for managing multiple processes. Collection inherits from Process and adds abstract methods for process management: `count()` returns the number of processes, `append()` adds a process, `remove()` removes a process by name, `has()` checks if a process exists, and `get()` retrieves a process by name.
 
-**Device modification permissions:**
-The system enforces thermal management domain rules through runtime permission validation. Environment processes can read and modify both Sensors and Actuators (hardware interface responsibility), while Controller processes can only modify Actuators (decision-making responsibility). This separation prevents Controllers from corrupting sensor readings while allowing proper thermal control. Permission checking uses call stack inspection to identify the modifying process and validates against a class-based permission matrix with inheritance support.
+Collection uses duck typing and specifies no internal container type. Any object that can store processes, determine execution timing, and coordinate execution is a valid Collection implementation. Collections are coordination abstractions containing no data structures themselves, just the protocol for managing processes.
 
-An `Environment` can read and modify sensors, but should only read actuators from its input state. `Simulation` environments may model virtual hardware responses, while `Hardware` environments interface with real hardware via Linux hwmon.
-
-A `Controller` can read and modify actuators, but should only read sensors from its input state. Controllers contain decision-making logic that determines actuator settings based on sensor readings.
+Collection inherits timing capabilities from Process, allowing Collections to participate in hierarchical timing coordination while implementing their own storage and execution strategies.
 
 ### Pipeline
 
-The `Pipeline` class implements unified timing coordination for thermal control through Environment → Controllers stages. Pipeline extends Process with timing-driven execution using a unified timing strategy where all children execute together at the same interval, preserving serial execution order and state flow. Pipeline manages a single logical control flow, such as CPU thermal management or GPU thermal management.
+The `Pipeline` class implements serial execution coordination for thermal control flows. Pipeline inherits from Collection and manages an ordered list of child processes in its `children` field, executing them sequentially where each child's output becomes the next child's input.
 
-**Unified Timing Strategy:**
-- All children execute serially at pipeline interval (default 100ms)
-- Maintains Environment → Controllers execution order
-- Single shared interval ensures coordinated thermal control
-- State flows serially through pipeline stages
-- Preserves existing thermal control patterns
+Pipeline execution passes states through children serially: input → child1.execute() → child2.execute() → ... → output. The `execute()` method iterates through children, calling each child's execute method with the current states and passing the result to the next child. Error handling catches exceptions, logs them, and continues with the next child to maintain thermal control operation.
 
-**Timing Implementation:**
-Pipeline implements the Process timing infrastructure for unified execution:
-- `_calculate_next_tick_time()`: Returns next execution time based on pipeline interval
-- `_select_processes_to_execute()`: Returns all children for unified execution  
-- `_execute_selected_processes()`: Executes children as serial pipeline
+Collection protocol implementation uses the children list directly: `count()` returns `len(children)`, `append()` adds to the list, `remove()` searches by name and removes matching processes, and `has()`/`get()` search the list by process name.
 
-**State Management:**
-- Maintains `states: Dict[str, State]` field with persistent states between executions
-- Supports both autonomous timing-driven execution and embedded Process execution
-- In autonomous mode, repeatedly executes pipeline and updates persistent states
-- In embedded mode, processes input states from parent System
-
-**Configuration and Conventions:**
-- Uses nanosecond time units with `interval_ns` field and `time.time_ns()` scheduling
-- Modulo-based timing ensures consistent intervals regardless of execution duration  
-- Follows Environment → Controllers convention with helper methods `set_environment()` and `add_controller()`
-- Overrideable `get_time()` method supports alternative time sources
-
-**Quality and Safety:**
-- Devices include `timestamp` and `quality` fields for operational state tracking
-- Only Environment processes update sensor timestamps and quality
-- Immutable State design with deep copying ensures safe execution
-- Error resilience prevents thermal control loop interruption
+Pipeline maintains its own execution timing inherited from Process but does not store persistent state between executions. It coordinates timing for serial execution while children manage their own internal state.
 
 ### System
 
-The `System` class implements independent timing coordination for multiple thermal control flows. System extends Process with timing-driven execution using an independent timing strategy where children execute when their individual timing requirements are met, enabling coordination across thermal zones with different update rates and thermal characteristics.
+The `System` class implements parallel execution coordination for multiple independent thermal control flows. System inherits from Collection and manages child processes in a priority queue implemented as `process_heap: List[Tuple[int, Process]]` using Python's `heapq` module for efficient timing-based coordination.
 
-**Independent Timing Strategy:**
-- Each child process operates on its own preferred interval
-- Children execute when ready, not in predetermined order
-- System queries children for timing preferences rather than imposing intervals
-- Parent-child communication via coordination hooks
-- Enables thermal zones with different response characteristics
+System execution finds processes ready to execute based on their individual timing preferences. The `_get_ready_children()` method queries the priority queue to find processes whose `get_next_execution_time()` is less than or equal to current time. Ready processes execute independently with their own state, and after execution they are re-added to the priority queue with updated next execution times.
 
-**Child Timing Query Mechanism:**
-System uses an "ask-don't-tell" approach where children express timing preferences and System orchestrates execution. This contrasts with Pipeline's unified timing where the parent dictates execution timing to all children.
+Collection protocol implementation operates on the priority queue: `append()` calculates the process's next execution time and pushes it onto the heap, `remove()` searches the heap and re-heapifies after removal, and `has()`/`get()` search through heap tuples by process name.
 
-**Timing Implementation:**
-System implements the Process timing infrastructure for independent execution:
-- `_calculate_next_tick_time()`: Queries all children via their `_calculate_next_tick_time()` methods and returns the earliest requested time
-- `_select_processes_to_execute()`: Returns children whose next execution time is less than or equal to current time
-- `_execute_selected_processes()`: Executes ready children independently
-
-**Execution Characteristics:**
-- **Serial execution**: Due to Python's GIL, execution remains serial but in timing-determined order
-- **Isolated state execution**: Each child manages its own state; although state may be shared between its children, such sharing is not administered by the base class.
-- **Uniform child handling**: System treats Pipeline and System children uniformly through Process interface
-- **Coordination hooks**: `_before_child_process()` and `_after_child_process()` enable coordination
-- **"Any news for me?" pattern**: Children can request updates from parent System
-- **Failure isolation**: Individual child failures don't abort System execution
-
-**Operational Patterns:**
-- **Independent zones**: CPU, GPU, storage thermal management with different update rates
-- **Distributed systems**: Remote thermal management nodes with network coordination
-- **Hierarchical control**: Systems containing other Systems for data center management
-- **Cross-zone coordination**: Thermal policies that span multiple thermal zones
-
-**Architecture Benefits:**
-- Enables thermal zones with natural timing differences (fast sensors, slow actuators)
-- Supports coordination without forced synchronization
-- Scales from single-machine to data center thermal management
-- Maintains thermal control safety through failure isolation
-
-#### Timing-Driven Execution Pattern
-
-The Process timing infrastructure follows a template method pattern:
-
-```mermaid
-sequenceDiagram
-    participant Process
-    participant Child1
-    participant Child2
-    participant ChildN
-
-    loop Timing Loop
-        Process->>Process: _calculate_next_tick_time()
-        Process->>Process: sleep_until(next_tick_time)
-        
-        Process->>Process: _before_process()
-        Process->>Process: _select_processes_to_execute()
-        Process->>Process: _before_child_process(selected)
-        
-        alt Pipeline (Unified Timing)
-            Process->>Child1: execute(states)
-            activate Child1
-            Child1-->>Process: modified_states
-            deactivate Child1
-            Process->>Child2: execute(modified_states)
-            activate Child2
-            Child2-->>Process: final_states
-            deactivate Child2
-        else System (Independent Timing)
-            par Ready Children Execute
-                Process->>Child1: execute(shared_states)
-                activate Child1
-                Child1-->>Process: child1_result
-                deactivate Child1
-            and
-                Process->>ChildN: execute(shared_states)
-                activate ChildN
-                ChildN-->>Process: childN_result
-                deactivate ChildN
-            end
-        end
-        
-        Process->>Process: _after_child_process(selected)
-        Process->>Process: _after_process()
-        Process->>Process: _update_timing_state()
-    end
-```
+System enables coordination across thermal zones with different update rates and characteristics. Children execute when ready based on their individual timing requirements rather than synchronized intervals, allowing CPU thermal management at 100ms intervals while storage thermal management operates at 1000ms intervals within the same System.
 
 ## Concrete Implementations
 
 ### Environments
 
-The `Hardware` environment interfaces with physical hardware through the Linux hwmon filesystem. It discovers available sensors and actuators, populates device lists, and implements read/apply methods for real-world interaction.
+The `Hardware` environment will interface with physical hardware through the Linux hwmon filesystem, discovering available sensors and actuators and implementing read/apply methods for real-world interaction.
 
-The `Simulation` environment creates virtual worlds with mathematical thermal models. Multiple simulation types support controller testing: LinearThermal, ThermalMass, RealisticSystem, UnstableSystem, FailureSimulation, and ChaosSystem.
+The `Simulation` environment will create virtual thermal models for controller testing, including linear thermal models, thermal mass simulation, realistic system models, unstable system models, failure simulation, and chaotic system models.
 
 ### Controllers
 
-The `SafetyController` implements fail-safe logic, monitoring actual state against critical thresholds and overriding other controllers when triggered. It executes last in the controller pipeline.
+The `SafetyController` will implement fail-safe logic, monitoring actual state against critical thresholds and overriding other controllers when triggered.
 
-The `PIDController` implements standard Proportional-Integral-Derivative control with anti-windup and derivative filtering. Multiple instances can control independent loops.
+The `PIDController` will implement standard Proportional-Integral-Derivative control with anti-windup and derivative filtering.
 
-The `LearningController` uses Echo State Networks to learn thermal relationships and optimize for multiple objectives like efficiency and noise.
+The `LearningController` will use Echo State Networks to learn thermal relationships and optimize for multiple objectives.
 
 ## Class Hierarchy
 
@@ -235,107 +100,76 @@ classDiagram
     }
     class Process {
         <<Abstract>>
+        +execute(states) Dict[str, State]
+        +interval_ns: int
+        +get_next_execution_time() int
+    }
+    class Collection {
+        <<Abstract>>
+        +count() int
+        +append(process) None
+        +remove(name) bool
+        +has(name) bool
+        +get(name) Process
     }
     class Controller
     class Environment
-    class Pipeline
-    class System
+    class Pipeline {
+        +children: List[Process]
+    }
+    class System {
+        +process_heap: List[Tuple[int, Process]]
+    }
     class ProtocolServer {
         <<Abstract>>
     }
-    class gRPCServer
-    class HTTPServer
-    class MQTTPublisher
 
     Entity <|-- Device
     Entity <|-- Process
-    Sensor --|> Device
-    Actuator --|> Device
-    Controller --|> Process
-    Environment --|> Process
-    Pipeline --|> Process
-    System --|> Process
-    ProtocolServer --|> Entity
-    gRPCServer --|> ProtocolServer
-    HTTPServer --|> ProtocolServer
-    MQTTPublisher --|> ProtocolServer
+    Device <|-- Sensor
+    Device <|-- Actuator
+    Process <|-- Collection
+    Process <|-- Controller
+    Process <|-- Environment
+    Collection <|-- Pipeline
+    Collection <|-- System
+    Entity <|-- ProtocolServer
 
-    Pipeline o-- "1" Environment
-    Pipeline o-- "1..*" Controller
-    Pipeline o-- "*" State : "manages in context"
-    System o-- "1..*" Pipeline : "coordinates"
-    Environment o-- "*" Device : "contains"
-    Controller ..> State : "operates on"
-    Environment ..> State : "produces/consumes"
-    ProtocolServer ..> System : "exposes remotely"
+    Pipeline o-- "*" Process : children
+    System o-- "*" Process : process_heap
+    Environment o-- "*" Device : contains
+    Controller ..> State : operates on
+    Environment ..> State : produces/consumes
 ```
 
 ## Protocol Layer Architecture
 
 The protocol layer enables remote thermal management across multiple network protocols while maintaining protocol-agnostic core logic. All protocols expose the same underlying pydantic thermal models through different transport mechanisms.
 
-### Protocol Use Cases
-
-The architecture supports multiple network protocols, each optimized for specific thermal management scenarios. gRPC provides high-frequency sensor data streaming, real-time control commands, and authenticated remote management for performance-critical applications. HTTP/REST handles configuration management, status queries, and integration with web dashboards for administrative interfaces. MQTT enables distributed sensor networks, IoT device integration, and pub/sub thermal alerts for scalable monitoring architectures. WebSocket delivers real-time dashboard updates and live thermal monitoring for interactive user interfaces. Prometheus supports metrics collection, alerting, and performance monitoring for operational observability.
+Protocol implementations will include gRPC for high-frequency sensor data streaming and real-time control commands, HTTP/REST for configuration management and status queries, MQTT for distributed sensor networks and pub/sub thermal alerts, WebSocket for real-time dashboard updates, and Prometheus for metrics collection and alerting.
 
 ## Serialization Strategy
 
-The architecture assumes that pydantic models serve as the single source of truth for all data structures. This ensures consistency across all protocols and eliminates schema drift.
-
-### Core Serialization Features
-
-The serialization strategy centers on single schema definition where thermal entities are defined once as pydantic models and exposed across multiple protocols including gRPC, HTTP, MQTT, and WebSocket. Protocol stubs generate automatically from pydantic models, providing full type checking across network boundaries while supporting arbitrary properties for flexible key-value extension without protocol changes.
-
-### Protocol-Specific Adaptations
-
-Each protocol adapts the common pydantic models to its specific requirements. gRPC uses `pydantic-rpc` to automatically generate protobuf definitions from pydantic models, while HTTP relies on direct FastAPI integration with pydantic models. MQTT employs JSON serialization via `model_dump_json()` for lightweight message passing. WebSocket enables real-time streaming of pydantic model updates for interactive interfaces, and Prometheus extracts metrics directly from pydantic model properties for observability.
-
-## Remote Communication
-
-Both Systems and Pipelines can communicate across networks using any supported protocol. Systems can coordinate multiple remote Pipelines, while Pipelines can operate independently across network boundaries through protocol-specific clients, enabling distributed thermal management across multiple machines or data centers.
-
-### Hierarchical Composition
-
-Systems can be composed hierarchically, with higher-level Systems managing collections of Pipelines or lower-level Systems. Remote Pipelines can appear as virtual devices to parent Systems, while remote Systems can be managed by higher-level coordination Systems, enabling scalable thermal management architectures.
+The architecture uses pydantic models as the single source of truth for all data structures, ensuring consistency across protocols and eliminating schema drift. Thermal entities are defined once as pydantic models and exposed across multiple protocols with automatic stub generation and full type checking across network boundaries.
 
 ## Testing Strategy
 
-The architecture supports comprehensive testing through multiple approaches targeting different system layers and integration points. Unit tests provide individual component validation with pytest, ensuring each class and method operates correctly in isolation. Pipeline tests validate complete Pipeline execution and controller integration, verifying that Environment and Controller processes coordinate properly within sequential execution flows. System tests focus on multi-Pipeline coordination and parallel execution validation, ensuring that Systems correctly manage multiple independent Pipelines and aggregate their results.
+The architecture supports testing through multiple approaches targeting different system layers. Unit tests provide individual component validation with pytest. Pipeline tests validate complete Pipeline execution and controller integration. System tests focus on multi-Pipeline coordination and parallel execution validation.
 
-Simulation tests evaluate controller behavior against mathematical thermal models, providing controlled environments for testing control algorithms without requiring physical hardware. Hardware tests conduct real-world validation and safety verification using actual thermal management hardware to confirm the system operates correctly under real conditions. Protocol tests verify multi-protocol serialization and network communication, ensuring that thermal data transmits correctly across different network protocols and maintains consistency.
+Simulation tests will evaluate controller behavior against mathematical thermal models, providing controlled environments for testing control algorithms without requiring physical hardware. Hardware tests will conduct real-world validation using actual thermal management hardware. Protocol tests will verify multi-protocol serialization and network communication.
 
-The simulation environments enable testing controller stability against both reasonable thermal models and perverse edge cases including positive feedback, chaotic dynamics, and hardware failures without risking physical hardware damage or system instability.
-
-### Adversarial Simulation Testing
-
-Critical to controller validation is the creation of deliberately pathological thermal environments designed to expose controller instabilities and failure modes. The simulation framework generates varied and pessimal thermal models using deterministic random seeds to ensure reproducible testing across controller implementations.
-
-Simulation environments include parametrically generated thermal models with randomized characteristics that stress different aspects of controller behavior. Seed-based generation ensures that the same pathological thermal conditions can be reproduced for regression testing and controller comparison. The framework creates thermal models with deliberately perverse physics including non-linear responses, chaotic dynamics with sensitive dependence on initial conditions, positive feedback loops designed to induce thermal runaway, sudden discontinuities and bifurcations in thermal behavior, and randomized parameter variations that change during simulation execution.
-
-The goal is comprehensive stress testing where controllers must demonstrate stability across thousands of randomly generated thermal environments, each designed to exploit different potential failure modes. Controllers that "fly off the deep end" under these adversarial conditions indicate fundamental stability problems that would manifest unpredictably in real-world deployment. Only controllers that remain stable across the full spectrum of pathological thermal models are considered suitable for production thermal management.
-
----
+The simulation environments will enable testing controller stability against both reasonable thermal models and deliberately pathological edge cases including positive feedback, chaotic dynamics, and hardware failures without risking physical hardware damage.
 
 ## Implementation Decisions
 
-**Process Timing Infrastructure**: The base Process class includes optional timing infrastructure through overridable methods rather than separate timing classes. This unified approach enables both simple transformations (Controllers, Environments) and complex coordination (Pipeline, System) within the same architectural framework.
+**Process Simplicity**: The base Process class provides only execution capability (`execute()`) and timing infrastructure (`get_next_execution_time()`). No children, no persistent state, no complex coordination. This separation enables both simple transformations (Controllers, Environments) and complex coordination (Pipeline, System) through composition.
 
-**Template Method Pattern**: Timing-driven execution uses a template method pattern where the timing loop structure is fixed but timing strategies are customizable through method overrides. This separation enables Pipeline's unified timing and System's independent timing using the same infrastructure.
+**Collection Protocol**: Collection defines a coordination interface without specifying container implementation. Pipeline uses a list for serial execution, System uses a priority queue for timing-based parallel coordination. This duck-typed approach enables different storage strategies while maintaining consistent management interface.
 
-**Unified vs Independent Timing**: Pipeline implements unified timing where all children execute together at shared intervals, preserving serial execution order. System implements independent timing where children execute when individually ready, enabling coordination across different thermal response characteristics.
+**Timing Separation**: Process knows when it wants to execute (`get_next_execution_time()`), Collections coordinate when execution actually occurs. This separation enables Pipeline's unified timing (all children execute together) and System's independent timing (children execute when individually ready) using the same Process timing interface.
 
-**GIL-Aware Design**: The architecture acknowledges Python's Global Interpreter Lock, designing "independent" timing as serial execution in timing-determined order rather than true parallelism. This simplifies implementation while providing the coordination benefits of independent timing.
+**Permission Enforcement**: Runtime validation prevents Controllers from modifying sensors while allowing Environment access to all devices. Call stack inspection identifies the modifying process and validates against domain rules, preventing thermal management violations during execution.
 
-**Coordination Hooks**: Before/after process hooks (`_before_process`, `_after_process`, `_before_child_process`, `_after_child_process`) enable parent-child communication and coordination without requiring complex inter-process communication mechanisms.
+**Immutable Data Flow**: State objects are immutable with copy-on-write semantics, ensuring safe data flow through process pipelines while preventing accidental modification that could corrupt thermal control calculations.
 
-**Process Initialization Infrastructure**: The Process `start()` method initialization logic is extracted into `_initialize_timing()` to enable parent processes (System) to initialize child timing state. This solves the bootstrap problem where children need timing state before first execution in hierarchical timing coordination.
-
-**System Timing Coordination**: System queries children for timing preferences via `_calculate_next_tick_time()` rather than imposing intervals, implementing an "ask-don't-tell" coordination model that respects individual child timing needs while maintaining execution order based on readiness.
-
-**Process Interface Improvements**: The base Process class uses `_process()` method for subclass implementations, providing clear separation between framework timing logic and domain-specific processing logic.
-
-**Nanosecond Time Units**: All timing uses `interval_ns` fields and `time.time_ns()` for precision. Overrideable `get_time()` method supports alternative time sources like GPS or NTP synchronization.
-
-**Device Quality Management**: Device properties include `timestamp` and `quality` fields with standard values ("valid", "stale", "failed", "unavailable") for operational state tracking. Only Environment processes update sensor timestamps and quality, preventing Controllers from corrupting sensor metadata.
-
-**Graceful Timing Control**: Modulo-based timing ensures consistent intervals regardless of execution duration. Responsive shutdown through `stop()` method with sleep interruption enables clean thermal control loop termination.
+**Nanosecond Units**: All timing uses nanosecond units with modulo-based calculation ensuring consistent intervals regardless of execution duration. Overrideable `get_time()` method supports alternative time sources for synchronized coordination.
