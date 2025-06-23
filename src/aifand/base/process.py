@@ -129,6 +129,14 @@ class Process(Entity, ABC):
         self.execution_count = 0
         self.stop_requested = False
 
+    def __lt__(self, other: "Process") -> bool:
+        """Compare processes for heap ordering by UUID string.
+
+        This enables heapq to handle processes with identical execution times
+        by falling back to UUID comparison for consistent ordering.
+        """
+        return False
+
 
 class Environment(Process, ABC):
     """Abstract base class for environment interfaces.

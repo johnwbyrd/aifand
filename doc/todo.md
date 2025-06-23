@@ -2,62 +2,42 @@
 
 ## Overview
 
-This document outlines the remaining implementation tasks for `aifand` following the completion of the base architecture refactoring.
+This document outlines the remaining implementation tasks for `aifand` following the completion of the base architecture refactoring and initial testing.
 
 ---
 
-## Base Architecture Testing (Phase 1)
+## Test Architecture Improvements (Phase 1 - Current)
 
 ### Objective
-Implement comprehensive tests for the newly refactored base architecture to ensure all components work correctly in isolation and integration.
+Fix timing inconsistencies in tests and create comprehensive stress testing for the base architecture timing coordination.
 
 ### Tasks
 
-1. **Collection Protocol Testing** (tests/unit/base/test_collection.py):
-   - **Protocol Compliance**: Test Pipeline and System both correctly implement Collection interface
-   - **Storage Strategy Verification**: Pipeline uses list, System uses priority queue, both satisfy same behavioral contracts
-   - **Edge Cases**: Empty collections, missing processes, duplicate names, type consistency
-   - **Child Management**: count(), append(), remove(), has(), get() work correctly across implementations
-   - **Timing Integration**: initialize_timing() propagates correctly to all children
+1. **Fix Current Test Timing Issues** (tests/unit/base/):
+   - **Convert Integration Tests to Deterministic**: Replace `>=` assertions with `==` using FastRunner exclusively
+   - **Calculate Exact Execution Counts**: Based on simulation duration and process intervals
+   - **Reserve StandardRunner Tests**: Only for essential threading, lifecycle, and shutdown validation
+   - **Fix Timing Source Confusion**: Ensure tests use appropriate timing source for their purpose
 
-2. **Pipeline Serial Coordination Testing** (tests/unit/base/test_pipeline.py):
-   - **State Flow Validation**: input → child1.execute() → child2.execute() → output
-   - **Execution Order**: Children execute in append order consistently
-   - **Error Resilience**: Failed children don't break pipeline, execution continues
-   - **Permission Integration**: PermissionErrors bubble up correctly
-   - **Empty Pipeline**: Graceful handling with no children (passthrough behavior)
-   - **List Storage**: Child management operations work correctly with internal list
+2. **Create Timing Stress Tests** (tests/unit/base/test_timing_stress.py):
+   - **Prime Interval Coordination**: 7ms, 11ms, 13ms, 17ms processes testing complex overlap patterns
+   - **Large-Scale Coordination**: 50+ processes with diverse intervals to stress System priority queue
+   - **Coprime Intervals**: Intervals with no common factors creating long repetition cycles
+   - **Dynamic Timing Changes**: Processes that modify their intervals during execution
+   - **Burst Patterns**: Processes idle for long periods then suddenly active
+   - **Edge Case Intervals**: 0ns, max integer, rapidly changing intervals
 
-3. **System Parallel Coordination Testing** (tests/unit/base/test_system.py):
-   - **Priority Queue Mechanics**: Children execute in timing order based on get_next_execution_time()
-   - **Independent Timing**: Children execute when individually ready, not synchronously
-   - **Heap Management**: Processes correctly re-added to queue after execution with updated times
-   - **Ready Detection**: _get_ready_children() accurately identifies processes ready to execute
-   - **State Isolation**: Children execute with empty states {}, manage their own state
-   - **Dynamic Timing**: Handles processes that change timing preferences during execution
-   - **Simultaneous Execution**: Multiple processes ready at exactly same time
+3. **Queue Stress Testing** (tests/unit/base/test_queue_stress.py):
+   - **Deep Priority Queue**: 100+ processes testing heap performance and correctness
+   - **Simultaneous Readiness**: Many processes ready at exactly the same time
+   - **Dynamic Addition/Removal**: Adding/removing processes during active execution
+   - **Memory Behavior**: Ensure no leaks under heavy timing load
+   - **Heap Invariant Validation**: Verify priority queue maintains correct ordering under stress
 
-4. **Runner Hierarchy Testing** (tests/unit/base/test_runner.py):
-   - **TimeSource Thread-Local Storage**: Thread isolation, basic operations, cleanup, concurrent runners
-   - **StandardRunner Real-Time**: Lifecycle management, threading, timing respect, error resilience, graceful shutdown
-   - **FastRunner Simulation**: Simulation time, run_for_duration(), deterministic execution, safety limits
-   - **Time Source Integration**: Process.get_time() correctly uses runner-provided time sources
-   - **Process Initialization**: initialize_timing() propagates through entire process tree
-
-5. **Integration Testing** (tests/unit/base/test_integration.py):
-   - **Runner + System**: StandardRunner executing System with multiple Pipelines at different intervals
-   - **Runner + Pipeline**: FastRunner executing Pipeline with multiple processes
-   - **Hierarchical Composition**: System containing Pipelines, System containing Systems
-   - **Multi-Rate Coordination**: Complex timing scenarios (10ms, 30ms, 70ms intervals)
-   - **Permission Integration**: Controllers/Environments work correctly under Runner execution
-   - **State Flow Validation**: Data flows correctly through complex hierarchies
-
-6. **Advanced Scenarios**:
-   - **Concurrent Access**: Multiple StandardRunners in different threads
-   - **Dynamic Modification**: Adding/removing children during execution
-   - **Timing Edge Cases**: Zero intervals, very large intervals, timing changes mid-execution
-   - **Memory Management**: No leaks from threading or thread-local storage
-   - **Long-Duration Stability**: FastRunner reliability during extended simulations
+4. **Minimal Real-Time Validation** (tests/unit/base/test_runner.py - cleanup):
+   - **Essential Threading Tests Only**: Lifecycle, error resilience, shutdown behavior
+   - **Short Intervals**: 10-30ms maximum to minimize test execution time
+   - **Real-Time Behavior**: Thread safety, actual sleeping, signal handling validation
 
 ---
 
