@@ -5,6 +5,7 @@ from .entity import Entity
 from .pipeline import Pipeline
 from .process import Controller, Environment, Process
 from .state import State
+from .system import System
 
 __all__ = [
     "Entity",
@@ -16,4 +17,5 @@ __all__ = [
     "Environment",
     "Controller",
     "Pipeline",
+    "System",
 ]

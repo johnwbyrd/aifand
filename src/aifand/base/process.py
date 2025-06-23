@@ -1,4 +1,11 @@
-"""Process classes for thermal management system execution."""
+"""Process classes for thermal management system execution.
+
+CRITICAL: Process base class MUST NOT store persistent state!
+State persistence is handled by concrete subclasses (Pipeline, System) that have explicit
+state management fields. The Process base class provides execution framework only.
+DO NOT ADD STATE STORAGE TO THIS FILE!  NOT IN ATTRIBUTES, NOT IN METHODS!
+THIS MEANS YOU, CLAUDE!
+"""
 
 import copy
 import logging
@@ -240,24 +247,19 @@ class Process(Entity, ABC):
     def _execute_selected_processes(self, processes: List["Process"]) -> None:
         """Execute the selected child processes.
 
-        Default implementation executes processes serially. Subclasses
-        can override for different execution strategies (parallel, etc.).
+        Base implementation provides no state management - subclasses must
+        override to implement their specific execution strategies and state handling.
 
         Args:
             processes: List of processes ready for execution
 
         """
-        if not processes:
-            return
-
-        # Default implementation: execute as serial pipeline
-        # This preserves state flow between processes
-        result_states = getattr(self, "_current_states", {})
-
+        # Base Process class does NOT manage state - subclasses must override
+        # this method to implement their own state management strategies
         for process in processes:
             try:
                 self._logger.debug(f"Executing selected process: {process.name}")
-                result_states = process.execute(result_states)
+                process.execute({})  # Base class provides empty state only
             except PermissionError:
                 # Permission errors bubble up as programming errors
                 raise
@@ -267,9 +269,6 @@ class Process(Entity, ABC):
                 )
                 # Continue with other processes (error resilience)
                 continue
-
-        # Store results back for next cycle
-        self._current_states = result_states
 
     def _before_process(self) -> None:
         """Hook called before process execution in timing loop.
@@ -311,6 +310,17 @@ class Process(Entity, ABC):
         """
         pass
 
+    def _initialize_timing(self) -> None:
+        """Initialize timing state for execution.
+
+        Sets up timing control fields for this process.
+        Can be called by parent processes to initialize child timing state
+        before execution begins.
+        """
+        self.start_time = self.get_time()
+        self.execution_count = 0
+        self.stop_requested = False
+
     def start(self) -> None:  # noqa: C901
         """Start timing-driven execution using template method pattern.
 
@@ -321,14 +331,7 @@ class Process(Entity, ABC):
         Continues until stop() is called. Handles execution errors gracefully
         by logging and continuing operation (critical for thermal systems).
         """
-        self.start_time = self.get_time()
-        self.execution_count = 0
-        self.stop_requested = False
-
-        # Initialize current states if not set
-        if not hasattr(self, "_current_states"):
-            self._current_states = {}
-
+        self._initialize_timing()
         self.get_logger().info(f"Starting timing-driven execution for process {self.name}")
 
         while not self.stop_requested:
@@ -352,10 +355,10 @@ class Process(Entity, ABC):
                         self._after_child_process(selected_processes)
                     else:
                         # No children - execute this process directly
+                        # Subclasses handle their own state management
                         try:
                             self._logger.debug(f"Executing process {self.name} in timing mode")
-                            current_states = getattr(self, "_current_states", {})
-                            self._current_states = self._process(current_states)
+                            self._process({})
                         except PermissionError:
                             # Permission errors bubble up as programming errors
                             raise
