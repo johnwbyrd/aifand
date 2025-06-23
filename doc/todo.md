@@ -2,276 +2,228 @@
 
 ## Overview
 
-This document outlines the remaining implementation tasks for `aifand`.
+This document outlines the remaining implementation tasks for `aifand` following the completion of the base architecture refactoring.
 
 ---
 
-## System Testing (Phase 3)
+## Base Architecture Testing (Phase 1)
 
 ### Objective
-Create comprehensive tests for System independent timing coordination with multi-rate children and hierarchical composition.
+Implement comprehensive tests for the newly refactored base architecture to ensure all components work correctly in isolation and integration.
 
 ### Tasks
 
-1. **Create System Test Mocks** (tests/unit/base/mocks.py):
-   - **MockTimedPipeline**: Pipeline with configurable intervals (10-70ms), execution tracking with nanosecond timestamps
-   - **MockTimedSystem**: System with execution history for hierarchical testing
-   - **MockProcess**: Simple Process for mixed child testing
-   - All mocks track: execution timestamps, sequence numbers, received states, call history
+1. **Collection Protocol Testing** (tests/unit/base/test_collection.py):
+   - **Protocol Compliance**: Test Pipeline and System both correctly implement Collection interface
+   - **Storage Strategy Verification**: Pipeline uses list, System uses priority queue, both satisfy same behavioral contracts
+   - **Edge Cases**: Empty collections, missing processes, duplicate names, type consistency
+   - **Child Management**: count(), append(), remove(), has(), get() work correctly across implementations
+   - **Timing Integration**: initialize_timing() propagates correctly to all children
 
-2. **Implement System Tests** (tests/unit/base/test_system.py):
+2. **Pipeline Serial Coordination Testing** (tests/unit/base/test_pipeline.py):
+   - **State Flow Validation**: input → child1.execute() → child2.execute() → output
+   - **Execution Order**: Children execute in append order consistently
+   - **Error Resilience**: Failed children don't break pipeline, execution continues
+   - **Permission Integration**: PermissionErrors bubble up correctly
+   - **Empty Pipeline**: Graceful handling with no children (passthrough behavior)
+   - **List Storage**: Child management operations work correctly with internal list
 
-   **TestSystemBasics**:
-   - test_system_creation, test_system_inheritance
-   - test_system_with_no_children (edge case)
-   - test_system_can_be_imported
+3. **System Parallel Coordination Testing** (tests/unit/base/test_system.py):
+   - **Priority Queue Mechanics**: Children execute in timing order based on get_next_execution_time()
+   - **Independent Timing**: Children execute when individually ready, not synchronously
+   - **Heap Management**: Processes correctly re-added to queue after execution with updated times
+   - **Ready Detection**: _get_ready_children() accurately identifies processes ready to execute
+   - **State Isolation**: Children execute with empty states {}, manage their own state
+   - **Dynamic Timing**: Handles processes that change timing preferences during execution
+   - **Simultaneous Execution**: Multiple processes ready at exactly same time
 
-   **TestSystemTimingCoordination**:
-   - test_multi_rate_pipeline_coordination:
-     * Pipeline A: 10ms, B: 30ms, C: 70ms intervals
-     * Run 150ms total, verify execution patterns match expected timing
-     * A executes: 10,20,30,40,50,60,70,80,90,100,110,120,130,140,150ms
-     * B executes: 30,60,90,120,150ms, C executes: 70,140ms
-   - test_simultaneous_execution_order: Pipelines (20ms, 40ms) ready at same time
-   - test_calculate_next_tick_time_accuracy: Verify earliest child time selection
-   - test_select_processes_to_execute_precision: Verify ready child identification
+4. **Runner Hierarchy Testing** (tests/unit/base/test_runner.py):
+   - **TimeSource Thread-Local Storage**: Thread isolation, basic operations, cleanup, concurrent runners
+   - **StandardRunner Real-Time**: Lifecycle management, threading, timing respect, error resilience, graceful shutdown
+   - **FastRunner Simulation**: Simulation time, run_for_duration(), deterministic execution, safety limits
+   - **Time Source Integration**: Process.get_time() correctly uses runner-provided time sources
+   - **Process Initialization**: initialize_timing() propagates through entire process tree
 
-   **TestSystemHierarchicalComposition**:
-   - test_system_containing_pipelines: Mixed Pipeline children
-   - test_system_containing_systems: System children with their own timing
-   - test_nested_system_coordination:
-     * Top System: MockPipeline (15ms), Sub-System (25ms)
-     * Sub-System contains: MockPipeline X (10ms), Y (35ms)
-     * Run 100ms, verify nested timing coordination
-   - test_deep_nesting: 3+ levels of System hierarchy
+5. **Integration Testing** (tests/unit/base/test_integration.py):
+   - **Runner + System**: StandardRunner executing System with multiple Pipelines at different intervals
+   - **Runner + Pipeline**: FastRunner executing Pipeline with multiple processes
+   - **Hierarchical Composition**: System containing Pipelines, System containing Systems
+   - **Multi-Rate Coordination**: Complex timing scenarios (10ms, 30ms, 70ms intervals)
+   - **Permission Integration**: Controllers/Environments work correctly under Runner execution
+   - **State Flow Validation**: Data flows correctly through complex hierarchies
 
-   **TestSystemStateIsolation**:
-   - test_children_receive_empty_states: Verify System passes {} to children
-   - test_state_independence: Children don't interfere with each other
-   - test_no_state_persistence_in_system: Verify System stores no persistent state
-
-   **TestSystemErrorHandling**:
-   - test_child_failure_isolation: One child fails, others continue
-   - test_permission_error_propagation: Permission errors bubble up
-   - test_timing_error_resilience: System continues despite child timing errors
-
-3. **Test Execution Requirements**:
-   - Use threading for timing-driven tests with proper cleanup
-   - Allow small timing tolerances in assertions (±5ms)
-   - Focus on relative timing and execution order verification
-   - Run tests quickly (all intervals <100ms, total test time <500ms per test)
+6. **Advanced Scenarios**:
+   - **Concurrent Access**: Multiple StandardRunners in different threads
+   - **Dynamic Modification**: Adding/removing children during execution
+   - **Timing Edge Cases**: Zero intervals, very large intervals, timing changes mid-execution
+   - **Memory Management**: No leaks from threading or thread-local storage
+   - **Long-Duration Stability**: FastRunner reliability during extended simulations
 
 ---
 
-## Simulation Environments
+## Basic Controllers (Phase 2)
 
 ### Objective
-Implement multiple simulation environments with deliberately pathological thermal models to test controller stability under extreme conditions. Focus on adversarial testing with chaotic dynamics, positive feedback loops, sudden discontinuities, and failure modes that real hardware might never produce.
+Implement fundamental controllers to enable meaningful thermal management testing and provide concrete implementations for Pipeline and System coordination testing.
 
 ### Tasks
-1. **Implement Adversarial Simulation Environments** (src/aifand/environments/simulation.py):
-   - **LinearThermal**: Simple linear heat transfer model (`temp_change = (heat_input - heat_dissipation) / thermal_mass`)
-   - **ThermalMass**: Multi-zone model with thermal inertia and time delays
+1. **Implement FixedSpeedController** (src/aifand/controllers/fixed.py):
+   - Static actuator control for initial testing and baseline scenarios
+   - Simple state transformation: set actuator values to fixed configuration
+   - Configuration management for different fixed operating points
+
+2. **Implement SafetyController** (src/aifand/controllers/safety.py):
+   - Fail-safe logic with critical threshold monitoring
+   - Override capability: can modify any actuator when safety limits exceeded
+   - Priority execution: should execute last in controller pipelines
+   - Emergency shutdown logic for thermal runaway scenarios
+
+3. **Controller Integration Testing**:
+   - Pipeline execution with Environment → Controllers flow
+   - State transformation validation through controller pipelines
+   - Permission system verification with actual controller implementations
+   - Error handling and resilience testing with real controller logic
+
+---
+
+## Simulation Environments (Phase 3)
+
+### Objective
+Implement simulation environments for testing controllers under controlled and adversarial conditions without requiring physical hardware.
+
+### Tasks
+1. **Implement Basic Simulation Environments** (src/aifand/environments/simulation.py):
+   - **LinearThermal**: Simple linear heat transfer model for basic testing
+   - **ThermalMass**: Multi-zone model with thermal inertia and realistic time delays
    - **RealisticSystem**: Computer thermal model with CPU load-based heat generation
+
+2. **Implement Adversarial Testing Environments**:
    - **UnstableSystem**: Positive feedback dynamics designed to induce thermal runaway
-   - **ChaosSystem**: Non-linear, chaotic thermal behavior with sudden discontinuities and bifurcations
-   - **FailureSimulation**: Random sensor dropouts, actuator failures, and hardware malfunctions
-   - **MaliciousSystem**: Deliberately perverse thermal physics designed to break controllers
-   - **RandomizedSystem**: Wildly varying parameters and dynamics to test adaptability
+   - **ChaosSystem**: Non-linear, chaotic thermal behavior with sudden discontinuities
+   - **FailureSimulation**: Random sensor dropouts, actuator failures, hardware malfunctions
 
-2. **Pathological Testing Framework**:
-   - Random parameter variation to create unpredictable thermal environments
-   - Stress testing with extreme thermal gradients and rapid state changes
-   - Controller stability validation against pessimal thermal conditions
-   - Detection of controller "flying off the deep end" under adversarial conditions
+3. **Simulation Integration**:
+   - Environment → Controller pipelines with realistic thermal dynamics
+   - FastRunner integration for rapid simulation of long-term thermal behavior
+   - Controller stability validation against pathological thermal conditions
+   - Quantitative stability metrics: overshoot, settling time, oscillation detection
 
 ---
 
-## Basic Controllers
+## Advanced Controllers (Phase 4)
 
 ### Objective
-Implement fundamental controllers for Pipeline testing and validation.
+Implement sophisticated control algorithms and validate them against simulation environments.
 
 ### Tasks
-1. **Implement Basic Controllers**:
-   - **FixedSpeedController** (src/aifand/controllers/fixed.py): Static actuator control for initial testing
-   - **SafetyController** (src/aifand/controllers/safety.py): Fail-safe logic with threshold monitoring
-   - State transformation and validation logic
-   - Controller configuration and parameter management
+1. **Implement PIDController** (src/aifand/controllers/pid.py):
+   - Configurable PID controller with tunable parameters
+   - Multiple independent control loops support
+   - Anti-windup and derivative filtering
+   - Setpoint tracking from desired state
 
-2. **Controller Testing Framework**:
-   - Integration tests for complete Pipeline execution with controllers
-   - Controller stability tests against each simulation environment
-   - Quantitative metrics: overshoot, settling time, oscillation detection
-   - Test scenarios: step response, disturbance rejection, setpoint tracking
-   - Data collection: time series of sensor/actuator values, performance metrics
+2. **Implement LearningController** (src/aifand/controllers/learning.py):
+   - Echo State Network-based controller using reservoir computing
+   - Recursive Least Squares for online learning
+   - Multi-input, multi-output control scenarios
+   - State space exploration and adaptation
 
----
-
-## Advanced Controller Development
-
-### Objective
-Implement sophisticated controllers and test them against simulation environments to validate stability and performance.
-
-### Tasks
-1. **Implement `PIDController`** (src/aifand/controllers/pid.py):
-   - Create configurable PID controller with tunable parameters
-   - Support multiple independent control loops
-   - Implement setpoint tracking from desired state
-   - Add anti-windup and derivative filtering
-
-2. **Implement `LearningController` with Echo State Network** (src/aifand/controllers/learning.py):
-   - Create ESN-based controller using reservoir computing
-   - Implement Recursive Least Squares (RLS) for online learning
-   - Support multi-input, multi-output control scenarios
-   - Implement state space exploration
-
-3. **Gold Code Training**:
-   - Generate reference control sequences from PID controllers
-   - Collect training datasets for different thermal scenarios
-   - Implement ESN training pipeline with Gold code sequences
-   - Create performance validation and comparison tools
-
-4. **Controller Testing and Benchmarking**:
+3. **Controller Validation Framework**:
    - Test each controller against all simulation environments
-   - Measure performance metrics: stability, efficiency, response time
-   - Identify failure modes and unstable behavior
-   - Compare controller performance across different scenarios
+   - Performance metrics collection: stability, efficiency, response time
+   - Failure mode identification and documentation
+   - Comparative analysis across different scenarios
 
-## Hardware Integration
+---
+
+## Hardware Integration (Phase 5)
 
 ### Objective
-Direct hwmon filesystem integration for real-world thermal management. Critical for production deployment - controllers must work reliably with actual hardware, handle I/O failures gracefully, and maintain safety under all conditions.
+Implement direct hardware interface for real-world thermal management deployment.
 
 ### Tasks
-1. **Implement `Hardware` Environment** (src/aifand/environments/hardware.py):
-   - Direct hwmon filesystem I/O (/sys/class/hwmon/hwmon*/temp*_input, pwm*, fan*_input)
-   - Automatic discovery of available sensors and actuators via filesystem enumeration
-   - Robust device capability detection (readable/writable, min/max values, scaling factors)
-   - Comprehensive error handling for hardware failures, missing devices, permission issues
+1. **Implement Hardware Environment** (src/aifand/environments/hardware.py):
+   - Direct hwmon filesystem integration (/sys/class/hwmon/)
+   - Automatic sensor and actuator discovery via filesystem enumeration
+   - Device capability detection (readable/writable, min/max values, scaling)
+   - Error handling for hardware failures, missing devices, permission issues
 
 2. **Hardware Interface Implementation**:
-   - Robust `read()` with proper scaling, unit conversion, and error recovery
-   - Safe `apply()` with value validation, bounds checking, and write verification
-   - Handle filesystem I/O failures, device disappearance, and permission changes
-   - Implement hardware-specific workarounds for quirky thermal sensors
+   - Robust read() with scaling, unit conversion, error recovery
+   - Safe apply() with value validation, bounds checking, write verification
+   - Hardware-specific workarounds for quirky thermal sensors
+   - Graceful degradation when hardware becomes unavailable
 
 3. **Hardware Validation Testing**:
-   - Real hardware testing procedures with actual thermal loads
-   - Safety mechanism validation under thermal stress conditions
-   - Controller stability testing with real thermal dynamics
-   - Hardware-specific calibration and characterization procedures
+   - Real hardware testing with actual thermal loads
+   - Safety mechanism validation under thermal stress
+   - Controller stability with real thermal dynamics
+   - Hardware-specific calibration procedures
 
 ---
 
-## Daemon Implementation
+## Protocol Layer Implementation (Phase 6)
 
 ### Objective
-Implement the daemon entry point and make the system runnable as a systemd service.
+Implement multi-protocol remote access layer for distributed thermal management.
 
 ### Tasks
-1. **Implement Daemon Entry Point** (src/aifand/daemon.py):
-   - Create main executable that instantiates and runs the System
-   - Implement signal handling for graceful shutdown
-   - Add configuration loading from files
-   - Implement daemon behavior and PID management
+1. **Protocol Server Implementation**:
+   - **gRPC**: High-frequency sensor streaming, real-time control commands
+   - **HTTP/REST**: Configuration management, status queries, web dashboard integration
+   - **MQTT**: Distributed sensor networks, pub/sub thermal alerts
+   - **WebSocket**: Real-time dashboard updates, live thermal monitoring
+   - **Prometheus**: Metrics collection, alerting, performance monitoring
+
+2. **Protocol Integration**:
+   - Pydantic model serialization across all protocols
+   - Authentication and secure communication
+   - Protocol-specific client implementations
+   - Cross-protocol consistency validation
+
+---
+
+## Daemon and Service Implementation (Phase 7)
+
+### Objective
+Implement production deployment capabilities with systemd integration.
+
+### Tasks
+1. **Daemon Implementation** (src/aifand/daemon.py):
+   - Main executable using StandardRunner for autonomous operation
+   - Signal handling for graceful shutdown
+   - Configuration loading from JSON files
+   - PID management and daemon behavior
 
 2. **System Serialization**:
-   - Implement System.save() and System.load() methods
-   - Serialize system state and configuration to JSON files
-   - Support saving/loading of devices, controllers, and current states
-   - Add configuration validation and error reporting
+   - System.save() and System.load() methods for configuration persistence
+   - JSON serialization of thermal management configurations
+   - Configuration validation and error reporting
 
 3. **Service Infrastructure**:
-   - Add systemd integration with service files and dependencies
-   - Implement graceful shutdown and restart capabilities
-   - Configure logging to systemd journal
-
-4. **User and Permissions**:
-   - Create dedicated user and group for aifand service
-   - Set appropriate file permissions and access controls
-   - Implement privilege separation
-
-5. **Operational Support**:
-   - Integrate with systemd journal for logging
-   - Add configuration directory structure (`/etc/aifand/`)
-   - Implement service status monitoring
-   - Create installation and uninstallation procedures
+   - systemd service integration with proper dependencies
+   - Privilege separation and dedicated user/group
+   - Logging integration with systemd journal
+   - Installation and uninstallation procedures
 
 ---
 
-## Protocol Layer Implementation
+## Distribution and Packaging (Phase 8)
 
 ### Objective
-Implement multi-protocol remote access layer enabling distributed thermal management.
-
-### Tasks
-1. **gRPC Protocol Implementation** (src/aifand/protocols/grpc/):
-   - Implement gRPC server using `pydantic-rpc` for automatic protobuf generation
-   - Create gRPC client for remote thermal management
-   - Support streaming for real-time sensor data
-   - Implement authentication and secure communication
-
-2. **HTTP REST API** (src/aifand/protocols/http/):
-   - Implement FastAPI server with direct pydantic integration
-   - Create REST endpoints for configuration management
-   - Add HTTP client for programmatic access
-   - Support JSON serialization of all thermal entities
-
-3. **MQTT Integration** (src/aifand/protocols/mqtt/):
-   - Implement MQTT publisher for distributed sensor networks
-   - Create MQTT subscriber for remote thermal sensors
-   - Support pub/sub thermal alerts and notifications
-   - Enable IoT device integration
-
-4. **Real-time Dashboard** (src/aifand/protocols/dashboard/):
-   - Implement WebSocket server for real-time updates
-   - Create HTML templates and static assets
-   - Support live thermal monitoring and control
-   - Add responsive web interface
-
-5. **Prometheus Metrics** (src/aifand/protocols/prometheus/):
-   - Implement metrics exporter for thermal data
-   - Define standard thermal management metrics
-   - Support alerting and performance monitoring
-   - Enable integration with monitoring infrastructure
-
----
-
-## Distribution & Packaging
-
-### Objective
-Create distribution packages for installation, upgrade, and removal of aifand.
+Create distribution packages for deployment across different environments.
 
 ### Tasks
 1. **Python Package Distribution**:
-   - Automated wheel and source distribution building via CI/CD
-   - Package integrity verification with twine
+   - Automated wheel and source distribution building
+   - Package integrity verification
    - GitHub Artifacts for development builds
-   - Future PyPI publication for stable releases
+   - PyPI publication for stable releases
 
 2. **Debian Package Creation**:
-   - Create `debian/` directory structure
-   - Implement control files with dependencies and metadata
-   - Add package descriptions and documentation
-   - Create debhelper configuration
-
-3. **Package Installation Scripts**:
-   - Implement `postinst` scripts for service installation and configuration
-   - Create `prerm` and `postrm` scripts for uninstallation
-   - Add user and group management in package scripts
-   - Implement configuration file handling
-
-4. **Build and Testing**:
-   - Set up automated package building with pbuilder/sbuild
-   - Create package testing procedures
-   - Implement dependency resolution and conflict checking
-   - Add package repository creation
+   - debian/ directory structure and control files
+   - Package installation scripts with user/group management
+   - Configuration file handling and service integration
+   - Automated package building and testing
 
 ---
-
-### Current Implementation Considerations
-
-**Pipeline vs System Architecture**: Pipeline manages single control flows with state persistence, while System coordinates multiple Pipelines for complex scenarios. This separation enables both simple single-zone control and complex multi-zone coordination.
-
-**Update Loop Timing**: Target ~100ms intervals, loose real-time constraints acceptable for thermal management use case. Modulo-based timing ensures consistent intervals regardless of execution duration.

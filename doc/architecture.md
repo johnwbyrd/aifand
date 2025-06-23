@@ -14,7 +14,7 @@ The `Entity` class serves as the foundational base for all objects within the sy
 
 Implementation details include inheritance from `pydantic.BaseModel` with `frozen=True` for immutability, automatic UUID generation via `uuid4()` if not provided, support for arbitrary key-value pairs alongside core fields, full JSON serialization and deserialization support, and string representation showing all fields for debugging.
 
-All core classes (`Device`, `Process`, `Collection`) inherit from `Entity` to ensure consistent identification, serialization, and extensibility across the architecture.
+All core classes (`Device`, `Process`, `Collection`, `Runner`) inherit from `Entity` to ensure consistent identification, serialization, and extensibility across the architecture.
 
 ### Data Models
 
@@ -28,7 +28,7 @@ A `State` represents a snapshot of device properties at a specific moment, imple
 
 The `Process` class represents computational units that transform thermal management data. Process provides a single `execute()` method that receives a dictionary of named states and returns a transformed dictionary of states. Process is a pure execution unit with no persistent state storage and no children.
 
-Process includes timing infrastructure with `interval_ns` field for execution intervals, `start_time` for timing loop initialization, `execution_count` for tracking completed cycles, and `get_next_execution_time()` method for calculating when next execution should occur using modulo timing. The timing system uses nanosecond precision with `get_time()` method returning `time.monotonic_ns()`.
+Process includes timing infrastructure with `interval_ns` field for execution intervals, `start_time` for timing loop initialization, `execution_count` for tracking completed cycles, and `get_next_execution_time()` method for calculating when next execution should occur using modulo timing. The timing system uses nanosecond precision with `get_time()` method that automatically uses runner-provided time sources when available, falling back to `time.monotonic_ns()`.
 
 Process execution characteristics include immutable data flow where input states are never modified, error resilience where exceptions are caught and logged without aborting thermal control, and per-process logging with hierarchical logger names.
 
@@ -42,7 +42,7 @@ The `Collection` class defines the coordination protocol for managing multiple p
 
 Collection uses duck typing and specifies no internal container type. Any object that can store processes, determine execution timing, and coordinate execution is a valid Collection implementation. Collections are coordination abstractions containing no data structures themselves, just the protocol for managing processes.
 
-Collection inherits timing capabilities from Process, allowing Collections to participate in hierarchical timing coordination while implementing their own storage and execution strategies.
+Collection inherits timing capabilities from Process, allowing Collections to participate in hierarchical timing coordination while implementing their own storage and execution strategies. Collections propagate `initialize_timing()` to all child processes to ensure clean timing state throughout the process hierarchy.
 
 ### Pipeline
 
@@ -64,7 +64,21 @@ Collection protocol implementation operates on the priority queue: `append()` ca
 
 System enables coordination across thermal zones with different update rates and characteristics. Children execute when ready based on their individual timing requirements rather than synchronized intervals, allowing CPU thermal management at 100ms intervals while storage thermal management operates at 1000ms intervals within the same System.
 
+### Runner
+
+The `Runner` class provides autonomous execution management for thermal management processes. Runner manages the execution lifecycle, calling a main process's `execute()` method according to the process's timing preferences while running in a separate thread for non-blocking operation.
+
+The `TimeSource` class encapsulates time source discovery using thread-local storage, enabling different runners to provide different time sources to processes executing in their threads. This abstraction supports both real-time execution and accelerated simulation testing.
+
+`StandardRunner` implements production execution that respects real-time timing, sleeping between executions to maintain proper intervals. It provides monotonic time to executed processes and handles graceful shutdown with proper thread cleanup.
+
+`FastRunner` implements accelerated execution for testing, maintaining internal simulation time that advances instantly to the next execution time without real delays. The `run_for_duration()` method enables deterministic testing of long-term thermal behavior in milliseconds rather than hours.
+
+Runner integration enables autonomous thermal management operation through `StandardRunner` and rapid testing of complex timing scenarios through `FastRunner`. Both runners initialize timing state for the entire process hierarchy and provide error resilience to maintain thermal control operation.
+
 ## Concrete Implementations
+
+The following implementations exist as skeleton classes requiring completion:
 
 ### Environments
 
@@ -103,6 +117,8 @@ classDiagram
         +execute(states) Dict[str, State]
         +interval_ns: int
         +get_next_execution_time() int
+        +get_time() int
+        +initialize_timing() None
     }
     class Collection {
         <<Abstract>>
@@ -120,12 +136,25 @@ classDiagram
     class System {
         +process_heap: List[Tuple[int, Process]]
     }
-    class ProtocolServer {
+    class Runner {
         <<Abstract>>
+        +main_process: Process
+        +start() None
+        +stop() None
+        +get_time() int
+    }
+    class StandardRunner
+    class FastRunner
+    class TimeSource {
+        <<Static>>
+        +set_current(runner) None
+        +get_current() Runner
+        +clear_current() None
     }
 
     Entity <|-- Device
     Entity <|-- Process
+    Entity <|-- Runner
     Device <|-- Sensor
     Device <|-- Actuator
     Process <|-- Collection
@@ -133,14 +162,25 @@ classDiagram
     Process <|-- Environment
     Collection <|-- Pipeline
     Collection <|-- System
-    Entity <|-- ProtocolServer
+    Runner <|-- StandardRunner
+    Runner <|-- FastRunner
 
     Pipeline o-- "*" Process : children
     System o-- "*" Process : process_heap
+    Runner o-- "1" Process : main_process
     Environment o-- "*" Device : contains
     Controller ..> State : operates on
     Environment ..> State : produces/consumes
+    TimeSource ..> Runner : manages
 ```
+
+## Autonomous Execution Architecture
+
+The Runner architecture enables autonomous thermal management operation by separating timing coordination from thermal management logic. StandardRunner provides production execution with real-time timing, while FastRunner enables accelerated testing for rapid validation of complex timing scenarios.
+
+The TimeSource abstraction uses thread-local storage to provide time sources to processes, enabling both real-time operation and deterministic simulation testing. Process.get_time() automatically uses runner-provided time when available, ensuring consistent timing behavior across execution contexts.
+
+Runner lifecycle management includes initialization of the entire process hierarchy timing state, graceful shutdown with proper thread cleanup, and error resilience to maintain thermal control operation despite individual process failures.
 
 ## Protocol Layer Architecture
 
@@ -156,9 +196,9 @@ The architecture uses pydantic models as the single source of truth for all data
 
 The architecture supports testing through multiple approaches targeting different system layers. Unit tests provide individual component validation with pytest. Pipeline tests validate complete Pipeline execution and controller integration. System tests focus on multi-Pipeline coordination and parallel execution validation.
 
-Simulation tests will evaluate controller behavior against mathematical thermal models, providing controlled environments for testing control algorithms without requiring physical hardware. Hardware tests will conduct real-world validation using actual thermal management hardware. Protocol tests will verify multi-protocol serialization and network communication.
+FastRunner enables rapid testing of long-term thermal behavior and complex timing scenarios without wall-clock delays. Simulation tests will evaluate controller behavior against mathematical thermal models, providing controlled environments for testing control algorithms without requiring physical hardware.
 
-The simulation environments will enable testing controller stability against both reasonable thermal models and deliberately pathological edge cases including positive feedback, chaotic dynamics, and hardware failures without risking physical hardware damage.
+Hardware tests will conduct real-world validation using actual thermal management hardware. Protocol tests will verify multi-protocol serialization and network communication. The simulation environments will enable testing controller stability against both reasonable thermal models and deliberately pathological edge cases.
 
 ## Implementation Decisions
 
@@ -166,10 +206,12 @@ The simulation environments will enable testing controller stability against bot
 
 **Collection Protocol**: Collection defines a coordination interface without specifying container implementation. Pipeline uses a list for serial execution, System uses a priority queue for timing-based parallel coordination. This duck-typed approach enables different storage strategies while maintaining consistent management interface.
 
-**Timing Separation**: Process knows when it wants to execute (`get_next_execution_time()`), Collections coordinate when execution actually occurs. This separation enables Pipeline's unified timing (all children execute together) and System's independent timing (children execute when individually ready) using the same Process timing interface.
+**Timing Separation**: Process knows when it wants to execute (`get_next_execution_time()`), Collections coordinate when execution actually occurs, Runner manages autonomous execution lifecycle. This separation enables Pipeline's unified timing (all children execute together) and System's independent timing (children execute when individually ready) using the same Process timing interface.
+
+**Runner Architecture**: Runner provides autonomous execution management with TimeSource abstraction enabling both real-time and accelerated testing. StandardRunner respects process timing for production operation, FastRunner accelerates time for rapid testing validation.
 
 **Permission Enforcement**: Runtime validation prevents Controllers from modifying sensors while allowing Environment access to all devices. Call stack inspection identifies the modifying process and validates against domain rules, preventing thermal management violations during execution.
 
 **Immutable Data Flow**: State objects are immutable with copy-on-write semantics, ensuring safe data flow through process pipelines while preventing accidental modification that could corrupt thermal control calculations.
 
-**Nanosecond Units**: All timing uses nanosecond units with modulo-based calculation ensuring consistent intervals regardless of execution duration. Overrideable `get_time()` method supports alternative time sources for synchronized coordination.
+**Thread-Local Time Sources**: TimeSource uses thread-local storage to provide time sources to processes, enabling different runners to operate independently in different threads while maintaining consistent timing behavior within each execution context.
