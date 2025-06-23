@@ -137,13 +137,14 @@ class Runner(Entity, ABC):
         return self._thread is not None and self._thread.is_alive()
 
     def _execute_process_once(self) -> None:
-        """Execute the main process once and update execution count.
+        """Execute the main process once.
 
         This method is shared between different runner implementations.
+        The template method pattern in Process.execute() automatically
+        handles execution count updates.
         """
         self._logger.debug(f"Executing {self.main_process.name}")
         self.main_process.execute({})
-        self.main_process.update_execution_count()
 
 
 class StandardRunner(Runner):
@@ -275,13 +276,13 @@ class FastRunner(Runner):
             duration_seconds: Simulation duration in seconds
 
         """
-        # Initialize timing
-        self.main_process.initialize_timing()
-        self._simulation_time = self.main_process.start_time
-        self._start_time = self._simulation_time
-
-        # Set ourselves as time source
+        # Set ourselves as time source first
+        self._simulation_time = 0
+        self._start_time = 0
         TimeSource.set_current(self)
+
+        # Initialize timing (will use simulation time source)
+        self.main_process.initialize_timing()
 
         try:
             end_time = self._simulation_time + int(duration_seconds * 1_000_000_000)

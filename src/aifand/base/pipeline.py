@@ -66,7 +66,7 @@ class Pipeline(Collection):
         for child in self.children:
             child.initialize_timing()
 
-    def execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Execute child processes serially and return transformed states.
 
         Passes states through children sequentially:

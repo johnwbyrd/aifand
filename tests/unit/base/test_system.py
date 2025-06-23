@@ -1,7 +1,5 @@
 """Tests for System parallel coordination."""
 
-import time
-
 from src.aifand.base.state import State
 from src.aifand.base.system import System
 
@@ -136,6 +134,8 @@ class TestSystemParallelCoordination:
 
     def test_system_dynamic_timing(self):
         """Test handles processes that change timing preferences during execution."""
+        from src.aifand.base.runner import FastRunner
+
         system = System(name="test_system")
 
         class DynamicTimingProcess(MockProcess):
@@ -143,8 +143,8 @@ class TestSystemParallelCoordination:
                 super().__init__(name=name, interval_ns=50_000_000)  # Start at 50ms
                 self.execution_count_local = 0
 
-            def execute(self, states):
-                result = super().execute(states)
+            def _execute(self, states):
+                result = super()._execute(states)
                 self.execution_count_local += 1
                 # Change interval after first execution
                 if self.execution_count_local == 1:
@@ -153,15 +153,16 @@ class TestSystemParallelCoordination:
 
         proc = DynamicTimingProcess("dynamic")
         system.append(proc)
-        system.initialize_timing()
 
-        # Execute multiple times
-        for _ in range(3):
-            system.execute({})
-            time.sleep(0.025)  # 25ms delay
+        # Use FastRunner for deterministic timing
+        runner = FastRunner(name="test_runner", main_process=system)
+        runner.run_for_duration(0.15)  # 150ms simulation
 
-        # Should handle timing changes gracefully
-        assert len(proc.execution_timestamps) >= 1
+        # Should handle timing changes gracefully and execute multiple times
+        # First execution at 0ms, then changes to 20ms interval
+        # Subsequent executions at 20ms, 40ms, 60ms, 80ms, 100ms, 120ms, 140ms
+        # Total: 1 + 7 = 8 executions approximately
+        assert len(proc.execution_timestamps) >= 3
 
     def test_system_simultaneous_execution(self):
         """Test multiple processes ready at exactly same time."""

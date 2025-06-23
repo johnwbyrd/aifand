@@ -22,8 +22,8 @@ class TestPipelineSerialCoordination:
                 super().__init__(name=name)
                 self.add_device = add_device
 
-            def execute(self, states):
-                result = super().execute(states)
+            def _execute(self, states):
+                result = super()._execute(states)
                 if "data" in result:
                     sensor = Sensor(name=self.add_device, properties={"value": 25.0})
                     result["data"] = result["data"].with_device(sensor)

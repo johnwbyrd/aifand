@@ -237,14 +237,41 @@ class TestRunnerIntegration:
         # Run simulation
         runner.run_for_duration(0.1)
 
-        # All processes should have initialized timing
-        assert pipeline.start_time > 0
-        assert inner_proc1.start_time > 0
-        assert inner_proc2.start_time > 0
+        # All processes should have initialized timing with simulation time (starting at 0)
+        assert pipeline.start_time == 0
+        assert inner_proc1.start_time == 0
+        assert inner_proc2.start_time == 0
 
-        # Start times should be reasonably close (within a few milliseconds)
-        # They won't be exactly equal due to sequential initialization
-        time_diff1 = abs(pipeline.start_time - inner_proc1.start_time)
-        time_diff2 = abs(pipeline.start_time - inner_proc2.start_time)
-        assert time_diff1 < 5_000_000  # Within 5ms
-        assert time_diff2 < 5_000_000  # Within 5ms
+        # All processes should have executed at least once
+        assert pipeline.execution_count >= 1
+        assert inner_proc1.execution_count >= 1
+        assert inner_proc2.execution_count >= 1
+
+    def test_concurrent_access_multiple_runners(self):
+        """Test multiple StandardRunners in different threads."""
+        results = {}
+
+        def run_system(system_id):
+            proc = MockProcess(name=f"proc_{system_id}", interval_ns=30_000_000)  # 30ms
+            runner = StandardRunner(name=f"runner_{system_id}", main_process=proc)
+
+            runner.start()
+            time.sleep(0.06)  # 60ms
+            runner.stop()
+
+            results[system_id] = len(proc.execution_timestamps)
+
+        # Start multiple runners concurrently
+        threads = []
+        for i in range(3):
+            thread = threading.Thread(target=run_system, args=(i,))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all to complete
+        for thread in threads:
+            thread.join()
+
+        # All should have executed
+        for i in range(3):
+            assert results[i] >= 1

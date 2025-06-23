@@ -59,9 +59,34 @@ class Process(Entity, ABC):
         # Create a logger specific to this process instance
         self._logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}")
 
-    @abstractmethod
     def execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Execute this process, transforming the input states.
+
+        Template method that calls _execute() and automatically updates execution count.
+
+        Args:
+            states: Dictionary of named states (e.g., "actual", "desired")
+
+        Returns:
+            Dictionary of transformed states
+
+        Note:
+            Input states are never modified. All transformations work on copies.
+
+        """
+        try:
+            result = self._execute(states)
+            self.update_execution_count()
+            return result
+        except Exception:
+            # Don't update execution count on failure
+            raise
+
+    @abstractmethod
+    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
+        """Execute this process, transforming the input states.
+
+        Subclasses implement this method instead of execute().
 
         Args:
             states: Dictionary of named states (e.g., "actual", "desired")
@@ -147,7 +172,7 @@ class Environment(Process, ABC):
     """
 
     @abstractmethod
-    def execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Environment-specific state transformation implementation."""
 
 
@@ -160,5 +185,5 @@ class Controller(Process, ABC):
     """
 
     @abstractmethod
-    def execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Controller-specific state transformation implementation."""

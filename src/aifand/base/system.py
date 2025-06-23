@@ -63,6 +63,24 @@ class System(Collection):
                 return process
         return None
 
+    def get_next_execution_time(self) -> int:
+        """Get next execution time based on earliest child's timing.
+
+        System executes when any child is ready, so it delegates timing
+        to the earliest child's next execution time.
+
+        Returns:
+            Earliest child's next execution time, or system's own time if no children
+
+        """
+        if not self.process_heap:
+            # No children - use our own timing
+            return super().get_next_execution_time()
+
+        # Return the earliest child's CURRENT timing (not stale heap data)
+        earliest_process = self.process_heap[0][1]
+        return earliest_process.get_next_execution_time()
+
     def initialize_timing(self) -> None:
         """Initialize timing state for system and all children.
 
@@ -91,7 +109,6 @@ class System(Collection):
 
         ready_processes: List[Process] = []
         current_time = self.get_time()
-        updated_heap: List[Tuple[int, Process]] = []
 
         # Pop ready processes from the front of the heap
         while self.process_heap:
@@ -104,9 +121,6 @@ class System(Collection):
                 # Process is ready - remove from heap and add to ready list
                 heapq.heappop(self.process_heap)
                 ready_processes.append(process)
-                # Re-add with updated time for next execution
-                updated_next_time = process.get_next_execution_time()
-                heapq.heappush(updated_heap, (updated_next_time, process))
             elif actual_next_time != next_time:
                 # Process timing changed but not ready - update heap entry
                 heapq.heappop(self.process_heap)
@@ -115,13 +129,9 @@ class System(Collection):
                 # Process not ready and timing unchanged - stop checking
                 break
 
-        # Add back the processes that executed with their updated times
-        for item in updated_heap:
-            heapq.heappush(self.process_heap, item)
-
         return ready_processes
 
-    def execute(self, states: Dict[str, State]) -> Dict[str, State]:
+    def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Execute ready child processes independently (parallel coordination).
 
         System finds children that are ready to execute based on their timing
@@ -136,17 +146,24 @@ class System(Collection):
         """
         ready_children = self._get_ready_children()
 
-        # Execute ready children independently
+        # Execute ready children independently and update heap with new timing
         for child in ready_children:
             try:
                 # Each child manages its own states independently
                 child.execute({})
+
+                # After execution, re-add child to heap with updated execution time
+                # (child was already removed from heap by _get_ready_children())
+                updated_next_time = child.get_next_execution_time()
+                heapq.heappush(self.process_heap, (updated_next_time, child))
             except PermissionError:
                 # Permission errors bubble up as programming errors
                 raise
             except Exception as e:
                 self._logger.error(f"Child process {child.name} failed in system {self.name}: {e}", exc_info=True)
-                # Continue with other children (error resilience)
+                # Re-add child to heap even on failure to continue scheduling
+                updated_next_time = child.get_next_execution_time()
+                heapq.heappush(self.process_heap, (updated_next_time, child))
                 continue
 
         return states
