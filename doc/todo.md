@@ -13,22 +13,7 @@ Fix timing inconsistencies in tests and create comprehensive stress testing for 
 
 ### Remaining Tasks
 
-1. **Create Timing Stress Tests** (tests/unit/base/test_timing_stress.py):
-   - **Prime Interval Coordination**: 7ms, 11ms, 13ms, 17ms processes testing complex overlap patterns
-   - **Large-Scale Coordination**: 50+ processes with diverse intervals to stress System priority queue
-   - **Coprime Intervals**: Intervals with no common factors creating long repetition cycles
-   - **Dynamic Timing Changes**: Processes that modify their intervals during execution
-   - **Burst Patterns**: Processes idle for long periods then suddenly active
-   - **Edge Case Intervals**: 0ns, max integer, rapidly changing intervals
-
-2. **Queue Stress Testing** (tests/unit/base/test_queue_stress.py):
-   - **Deep Priority Queue**: 100+ processes testing heap performance and correctness
-   - **Simultaneous Readiness**: Many processes ready at exactly the same time
-   - **Dynamic Addition/Removal**: Adding/removing processes during active execution
-   - **Memory Behavior**: Ensure no leaks under heavy timing load
-   - **Heap Invariant Validation**: Verify priority queue maintains correct ordering under stress
-
-3. **Permission System Integration Testing** (tests/unit/base/test_permissions.py - enhancement):
+1. **Permission System Integration Testing** (tests/unit/base/test_permissions.py - enhancement):
    - **Real Pipeline Permission Flow**: Test Controllers and Environments in actual Pipeline execution
    - **Hierarchical Permission Validation**: Test permissions through System → Pipeline → Process chains
    - **Runtime Permission Edge Cases**: Permission checking under concurrent execution
