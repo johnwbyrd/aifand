@@ -16,9 +16,9 @@ class TimeSource:
     """Encapsulates time source discovery mechanism for process execution.
 
     This class manages thread-local storage of runner instances to provide
-    time sources for processes executing in different threads. The encapsulation
-    allows for future changes to the time source discovery mechanism without
-    modifying Process code.
+    time sources for processes executing in different threads. The
+    encapsulation allows for future changes to the time source discovery
+    mechanism without modifying Process code.
     """
 
     _thread_locals = threading.local()
@@ -65,11 +65,15 @@ class Runner(Entity, ABC):
     - Initializes process timing state on start
     """
 
-    main_process: Process = Field(description="The root process to execute autonomously")
+    main_process: Process = Field(
+        description="The root process to execute autonomously"
+    )
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
-        self._logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}")
+        self._logger = logging.getLogger(
+            f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}"
+        )
         self._thread: threading.Thread | None = None
         self._stop_requested = False
 
@@ -106,7 +110,11 @@ class Runner(Entity, ABC):
 
         # Start execution thread
         self._stop_requested = False
-        self._thread = threading.Thread(target=self._execution_loop, name=f"Runner-{self.name}", daemon=True)
+        self._thread = threading.Thread(
+            target=self._execution_loop,
+            name=f"Runner-{self.name}",
+            daemon=True,
+        )
         self._thread.start()
 
     def stop(self) -> None:
@@ -123,7 +131,9 @@ class Runner(Entity, ABC):
         # Wait for thread to finish
         self._thread.join(timeout=5.0)
         if self._thread.is_alive():
-            self._logger.warning(f"Runner {self.name} thread did not stop within timeout")
+            self._logger.warning(
+                f"Runner {self.name} thread did not stop within timeout"
+            )
 
         self._thread = None
 
@@ -181,13 +191,17 @@ class StandardRunner(Runner):
                         self._execute_process_once()
                     else:
                         # Sleep until next execution
-                        sleep_duration = (next_time - current_time) / 1_000_000_000.0  # ns to seconds
+                        sleep_duration = (
+                            next_time - current_time
+                        ) / 1_000_000_000.0  # ns to seconds
                         if sleep_duration > 0:
                             time.sleep(sleep_duration)
 
                 except Exception as e:
                     # Log error but continue execution
-                    self._logger.error(f"Error in execution loop: {e}", exc_info=True)
+                    self._logger.error(
+                        f"Error in execution loop: {e}", exc_info=True
+                    )
                     # Brief sleep to prevent tight error loop
                     time.sleep(0.1)
 
@@ -242,7 +256,10 @@ class FastRunner(Runner):
             self._simulation_time = target_time
 
     def _should_continue_execution(self) -> bool:
-        """Check if execution should continue based on stop flag and safety limits.
+        """Check if execution should continue based on stop flag and safety.
+
+        Checks stop flag and safety limits to determine if execution should
+        continue.
 
         Returns:
             True if execution should continue
@@ -285,19 +302,32 @@ class FastRunner(Runner):
         self.main_process.initialize_timing()
 
         try:
-            end_time = self._simulation_time + int(duration_seconds * 1_000_000_000)
+            end_time = self._simulation_time + int(
+                duration_seconds * 1_000_000_000
+            )
 
-            while self._simulation_time < end_time and self._should_continue_execution():
+            while (
+                self._simulation_time < end_time
+                and self._should_continue_execution()
+            ):
                 self._execute_one_cycle()
 
         finally:
             TimeSource.clear_current()
 
     def _execution_loop(self) -> None:
-        """FastRunner uses run_for_duration instead of thread-based execution."""
+        """FastRunner uses run_for_duration instead of thread-based execution.
+
+        This runner doesn't support threaded execution - use
+        run_for_duration().
+        """
         # This runner doesn't use threaded execution
-        raise NotImplementedError("FastRunner uses run_for_duration() instead of start()")
+        raise NotImplementedError(
+            "FastRunner uses run_for_duration() instead of start()"
+        )
 
     def start(self) -> None:
         """FastRunner doesn't support threaded execution."""
-        raise NotImplementedError("FastRunner uses run_for_duration() instead of start()")
+        raise NotImplementedError(
+            "FastRunner uses run_for_duration() instead of start()"
+        )

@@ -38,7 +38,9 @@ class CountingMixin:
     has executed its execute method.
     """
 
-    counter: int = Field(default=0, description="Counter for tracking executions")
+    counter: int = Field(
+        default=0, description="Counter for tracking executions"
+    )
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Increment counter and call parent _execute method."""
@@ -56,15 +58,22 @@ class FailingMixin:
     processes fail after a specified number of executions.
     """
 
-    fail_after: int = Field(default=3, description="Number of executions before failing")
-    fail_count: int = Field(default=0, description="Counter for tracking calls before failure")
+    fail_after: int = Field(
+        default=3, description="Number of executions before failing"
+    )
+    fail_count: int = Field(
+        default=0,
+        description="Counter for tracking calls before failure",
+    )
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Fail after specified number of executions."""
         self.fail_count += 1
 
         if self.fail_count > self.fail_after:
-            raise RuntimeError(f"Simulated failure on execution {self.fail_count}")
+            raise RuntimeError(
+                f"Simulated failure on execution {self.fail_count}"
+            )
 
         # Call parent class _execute if it exists
         if hasattr(super(), "_execute"):
@@ -73,12 +82,23 @@ class FailingMixin:
 
 
 class MockTimedPipeline(Pipeline):
-    """Pipeline mock for System testing with configurable intervals and execution tracking."""
+    """Pipeline mock for System testing with configurable intervals.
 
-    execution_timestamps: List[int] = Field(default_factory=list, description="Nanosecond timestamps of executions")
-    execution_sequence: List[int] = Field(default_factory=list, description="Sequence numbers for executions")
+    Pipeline mock for System testing with configurable intervals and
+    execution tracking.
+    """
+
+    execution_timestamps: List[int] = Field(
+        default_factory=list,
+        description="Nanosecond timestamps of executions",
+    )
+    execution_sequence: List[int] = Field(
+        default_factory=list,
+        description="Sequence numbers for executions",
+    )
     received_states_log: List[Dict[str, State]] = Field(
-        default_factory=list, description="Log of states received during execution"
+        default_factory=list,
+        description="Log of states received during execution",
     )
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
@@ -87,7 +107,8 @@ class MockTimedPipeline(Pipeline):
         self.execution_sequence.append(self.execution_count)
         self.received_states_log.append(states.copy())
 
-        # Call the parent _execute method to handle any mixins (like FailingMixin)
+        # Call the parent _execute method to handle any mixins
+        # (like FailingMixin)
         # Execution count will be automatically updated by base class
         return super()._execute(states)
 
@@ -95,7 +116,10 @@ class MockTimedPipeline(Pipeline):
 class MockTimedSystem(System):
     """System mock for hierarchical testing with execution tracking."""
 
-    execution_history: List[Dict] = Field(default_factory=list, description="History of executions with metadata")
+    execution_history: List[Dict] = Field(
+        default_factory=list,
+        description="History of executions with metadata",
+    )
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Track execution when called by parent System."""
@@ -114,8 +138,14 @@ class MockTimedSystem(System):
 class MockProcess(Process):
     """Simple Process mock for mixed child testing."""
 
-    call_history: List[Dict] = Field(default_factory=list, description="Complete call history with timestamps")
-    execution_timestamps: List[int] = Field(default_factory=list, description="Nanosecond timestamps of executions")
+    call_history: List[Dict] = Field(
+        default_factory=list,
+        description="Complete call history with timestamps",
+    )
+    execution_timestamps: List[int] = Field(
+        default_factory=list,
+        description="Nanosecond timestamps of executions",
+    )
 
     def _execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Track execution with detailed logging."""

@@ -83,7 +83,8 @@ class TestCollectionProtocol:
             # Test duplicate name handling (should replace/update)
             process2 = MockProcess(name="test_process")  # Same name
             collection.append(process2)
-            # Should still only have one process (behavior varies by implementation)
+            # Should still only have one process (behavior varies by
+            # implementation)
             found_process = collection.get("test_process")
             assert found_process is not None
 
@@ -127,8 +128,12 @@ class TestCollectionProtocol:
 
         for collection in [pipeline, system]:
             # Add mock processes
-            proc1 = MockProcess(name="process1", interval_ns=50_000_000)  # 50ms
-            proc2 = MockProcess(name="process2", interval_ns=100_000_000)  # 100ms
+            proc1 = MockProcess(
+                name="process1", interval_ns=50_000_000
+            )  # 50ms
+            proc2 = MockProcess(
+                name="process2", interval_ns=100_000_000
+            )  # 100ms
 
             collection.append(proc1)
             collection.append(proc2)

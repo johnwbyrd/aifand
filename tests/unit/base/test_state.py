@@ -20,8 +20,12 @@ class TestState:
 
     def test_state_creation_with_devices(self):
         """Test creating a state with initial devices."""
-        temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0, "unit": "°C"})
-        fan_actuator = Actuator(name="cpu_fan", properties={"value": 128, "unit": "PWM"})
+        temp_sensor = Sensor(
+            name="cpu_temp", properties={"value": 45.0, "unit": "°C"}
+        )
+        fan_actuator = Actuator(
+            name="cpu_fan", properties={"value": 128, "unit": "PWM"}
+        )
 
         devices = {"cpu_temp": temp_sensor, "cpu_fan": fan_actuator}
         state = State(devices=devices)
@@ -148,7 +152,9 @@ class TestState:
 
     def test_state_serialization(self):
         """Test state serialization and deserialization."""
-        temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0, "unit": "°C"})
+        temp_sensor = Sensor(
+            name="cpu_temp", properties={"value": 45.0, "unit": "°C"}
+        )
         original_state = State(devices={"cpu_temp": temp_sensor})
 
         # Serialize to dict
@@ -160,7 +166,9 @@ class TestState:
         state_json = original_state.model_dump_json()
         reconstructed_state = State.model_validate_json(state_json)
 
-        assert reconstructed_state.device_count() == original_state.device_count()
+        assert (
+            reconstructed_state.device_count() == original_state.device_count()
+        )
         assert reconstructed_state.has_device("cpu_temp")
 
         # Device should be equivalent (though potentially different UUID)

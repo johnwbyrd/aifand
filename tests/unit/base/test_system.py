@@ -10,7 +10,10 @@ class TestSystemParallelCoordination:
     """Test System parallel coordination for multiple thermal control flows."""
 
     def test_system_priority_queue_mechanics(self):
-        """Test children execute in timing order based on get_next_execution_time()."""
+        """Test children execute in timing order.
+
+        Test based on get_next_execution_time().
+        """
         system = System(name="test_system")
 
         # Create processes with different intervals
@@ -47,8 +50,12 @@ class TestSystemParallelCoordination:
 
         # Test that System handles timing independently vs synchronously
         # Instead of testing execution counts, test that timing is respected
-        fast_proc = MockTimedPipeline(name="fast", interval_ns=50_000_000)  # 50ms
-        slow_proc = MockTimedPipeline(name="slow", interval_ns=50_000_000)  # 50ms
+        fast_proc = MockTimedPipeline(
+            name="fast", interval_ns=50_000_000
+        )  # 50ms
+        slow_proc = MockTimedPipeline(
+            name="slow", interval_ns=50_000_000
+        )  # 50ms
 
         system.append(fast_proc)
         system.append(slow_proc)
@@ -65,10 +72,15 @@ class TestSystemParallelCoordination:
         # This verifies the System parallel coordination logic works
 
     def test_system_heap_management(self):
-        """Test processes correctly re-added to queue after execution with updated times."""
+        """Test processes correctly re-added to queue after execution.
+
+        Test with updated times.
+        """
         system = System(name="test_system")
 
-        proc = MockTimedPipeline(name="test_proc", interval_ns=50_000_000)  # 50ms
+        proc = MockTimedPipeline(
+            name="test_proc", interval_ns=50_000_000
+        )  # 50ms
         system.append(proc)
         system.initialize_timing()
 
@@ -89,12 +101,19 @@ class TestSystemParallelCoordination:
         assert heap_time == next_time
 
     def test_system_ready_detection(self):
-        """Test _get_ready_children() accurately identifies processes ready to execute."""
+        """Test _get_ready_children() accurately identifies processes.
+
+        Test processes ready to execute.
+        """
         system = System(name="test_system")
 
         # Create process that won't be ready immediately
-        future_proc = MockProcess(name="future", interval_ns=1_000_000_000)  # 1 second
-        current_proc = MockProcess(name="current", interval_ns=1_000_000)  # 1ms
+        future_proc = MockProcess(
+            name="future", interval_ns=1_000_000_000
+        )  # 1 second
+        current_proc = MockProcess(
+            name="current", interval_ns=1_000_000
+        )  # 1ms
 
         system.append(future_proc)
         system.append(current_proc)
@@ -108,7 +127,10 @@ class TestSystemParallelCoordination:
         assert "current" in ready_names
 
     def test_system_state_isolation(self):
-        """Test children execute with empty states {}, manage their own state."""
+        """Test children execute with empty states {}.
+
+        Test manage their own state.
+        """
         system = System(name="test_system")
 
         # Create processes that track received states
@@ -133,14 +155,19 @@ class TestSystemParallelCoordination:
             assert proc2.received_states_log[0] == {}
 
     def test_system_dynamic_timing(self):
-        """Test handles processes that change timing preferences during execution."""
+        """Test handles processes that change timing preferences.
+
+        Test during execution.
+        """
         from src.aifand.base.runner import FastRunner
 
         system = System(name="test_system")
 
         class DynamicTimingProcess(MockProcess):
             def __init__(self, name: str):
-                super().__init__(name=name, interval_ns=50_000_000)  # Start at 50ms
+                super().__init__(
+                    name=name, interval_ns=50_000_000
+                )  # Start at 50ms
                 self.execution_count_local = 0
 
             def _execute(self, states):
@@ -183,6 +210,8 @@ class TestSystemParallelCoordination:
 
         # All processes should execute since they start ready
         total_executions = (
-            len(proc1.execution_timestamps) + len(proc2.execution_timestamps) + len(proc3.execution_timestamps)
+            len(proc1.execution_timestamps)
+            + len(proc2.execution_timestamps)
+            + len(proc3.execution_timestamps)
         )
         assert total_executions >= 3  # All three should execute at least once

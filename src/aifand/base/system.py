@@ -1,4 +1,8 @@
-"""System class for independent timing coordination of multiple thermal control flows."""
+"""System class for independent timing coordination of multiple thermal.
+
+System class for independent timing coordination of multiple thermal
+control flows.
+"""
 
 import heapq
 from typing import Dict, List, Tuple
@@ -11,17 +15,23 @@ from .state import State
 
 
 class System(Collection):
-    """Independent timing coordination for parallel thermal control coordination.
+    """Independent timing coordination for parallel thermal control.
 
-    System manages multiple Pipelines or other Systems with independent timing,
-    where each child executes when its individual timing requirements are met.
-    This enables coordination across thermal zones with different update rates.
+    Independent timing coordination for parallel thermal control
+    coordination.
 
-    System queries children for timing preferences and executes ready children
-    independently (parallel coordination). Each child manages its own state.
+    System manages multiple Pipelines or other Systems with independent
+    timing, where each child executes when its individual timing
+    requirements are met. This enables coordination across thermal zones
+    with different update rates.
+
+    System queries children for timing preferences and executes ready
+    children independently (parallel coordination). Each child manages its
+    own state.
 
     Key characteristics:
-    - Independent timing: Children execute when ready based on their own timing
+    - Independent timing: Children execute when ready based on their own
+      timing
     - Parallel coordination: Ready children execute independently
     - State isolation: Each child manages its own state
     - Hierarchical composition: Systems can contain other Systems
@@ -29,7 +39,9 @@ class System(Collection):
 
     # Child process storage as priority queue (next_time, process)
     process_heap: List[Tuple[int, Process]] = Field(
-        default_factory=list, description="Priority queue of (next_execution_time, process) for parallel coordination"
+        default_factory=list,
+        description="Priority queue of (next_execution_time, process) for "
+        "parallel coordination",
     )
 
     # Collection protocol implementation
@@ -43,7 +55,10 @@ class System(Collection):
         heapq.heappush(self.process_heap, (next_time, process))
 
     def remove(self, name: str) -> bool:
-        """Remove a process by name. Returns True if removed, False if not found."""
+        """Remove a process by name.
+
+        Returns True if removed, False if not found.
+        """
         for i, (_, process) in enumerate(self.process_heap):
             if process.name == name:
                 # Remove item and re-heapify
@@ -70,14 +85,16 @@ class System(Collection):
         to the earliest child's next execution time.
 
         Returns:
-            Earliest child's next execution time, or system's own time if no children
+            Earliest child's next execution time, or system's own time if
+            no children
 
         """
         if not self.process_heap:
             # No children - use our own timing
             return super().get_next_execution_time()
 
-        # Return the earliest child's CURRENT timing (not stale heap data)
+        # Return the earliest child's CURRENT timing (not stale heap
+        # data)
         earliest_process = self.process_heap[0][1]
         return earliest_process.get_next_execution_time()
 
@@ -152,15 +169,20 @@ class System(Collection):
                 # Each child manages its own states independently
                 child.execute({})
 
-                # After execution, re-add child to heap with updated execution time
-                # (child was already removed from heap by _get_ready_children())
+                # After execution, re-add child to heap with updated
+                # execution time (child was already removed from heap by
+                # _get_ready_children())
                 updated_next_time = child.get_next_execution_time()
                 heapq.heappush(self.process_heap, (updated_next_time, child))
             except PermissionError:
                 # Permission errors bubble up as programming errors
                 raise
             except Exception as e:
-                self._logger.error(f"Child process {child.name} failed in system {self.name}: {e}", exc_info=True)
+                self._logger.error(
+                    f"Child process {child.name} failed in system "
+                    f"{self.name}: {e}",
+                    exc_info=True,
+                )
                 # Re-add child to heap even on failure to continue scheduling
                 updated_next_time = child.get_next_execution_time()
                 heapq.heappush(self.process_heap, (updated_next_time, child))

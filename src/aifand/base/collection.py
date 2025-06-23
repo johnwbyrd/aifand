@@ -1,4 +1,4 @@
-"""A collection of processes, which can be executed serially or in parallel."""
+"""A collection of processes, executed serially or in parallel."""
 
 from abc import ABC, abstractmethod
 
@@ -6,19 +6,22 @@ from .process import Process
 
 
 class Collection(Process, ABC):
-    """A collection of processes, which can be executed serially or in parallel.
+    """A collection of processes, executed serially or in parallel.
 
-    This class represents a collection of processes that can be executed either
-    one after another (serially) or all at once (in parallel). It inherits from
-    the Entity class to provide unique identification and naming capabilities.
+    This class represents a collection of processes that can be executed
+    either one after another (serially) or all at once (in parallel).
+    It inherits from the Entity class to provide unique identification
+    and naming capabilities.
 
-    Note that a Collection does not specify an internal container type! This is
-    Python and we use duck typing. Any object that can store a bunch of
-    processes, can be asked what time the next process(es) wants to be executed,
-    and can execute it or them, is valid as a Collection.
+    Note that a Collection does not specify an internal container type!
+    This is Python and we use duck typing. Any object that can store a
+    bunch of processes, can be asked what time the next process(es)
+    wants to be executed, and can execute it or them, is valid as a
+    Collection.
 
-    Collections are purely coordination abstractions - they contain no data
-    structures themselves, just the protocol for managing processes.
+    Collections are purely coordination abstractions - they contain no
+    data structures themselves, just the protocol for managing
+    processes.
     """
 
     @abstractmethod
@@ -31,11 +34,17 @@ class Collection(Process, ABC):
 
     @abstractmethod
     def remove(self, name: str) -> bool:
-        """Remove a process by name. Returns True if removed, False if not found."""
+        """Remove a process by name.
+
+        Returns True if removed, False if not found.
+        """
 
     @abstractmethod
     def has(self, name: str) -> bool:
-        """Check if a process with the given name exists in the collection."""
+        """Check if a process with the given name exists.
+
+        Returns True if found in the collection.
+        """
 
     @abstractmethod
     def get(self, name: str) -> Process | None:

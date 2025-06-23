@@ -22,7 +22,8 @@ class Pipeline(Collection):
 
     # Child process storage for serial execution
     children: List[Process] = Field(
-        default_factory=list, description="Ordered list of child processes for serial execution"
+        default_factory=list,
+        description="Ordered list of child processes for serial execution",
     )
 
     # Collection protocol implementation
@@ -35,7 +36,10 @@ class Pipeline(Collection):
         self.children.append(process)
 
     def remove(self, name: str) -> bool:
-        """Remove a process by name. Returns True if removed, False if not found."""
+        """Remove a process by name.
+
+        Returns True if removed, False if not found.
+        """
         for i, child in enumerate(self.children):
             if child.name == name:
                 self.children.pop(i)
@@ -89,7 +93,11 @@ class Pipeline(Collection):
                 # Permission errors bubble up as programming errors
                 raise
             except Exception as e:
-                self._logger.error(f"Child process {child.name} failed in pipeline {self.name}: {e}", exc_info=True)
+                self._logger.error(
+                    f"Child process {child.name} failed in pipeline "
+                    f"{self.name}: {e}",
+                    exc_info=True,
+                )
                 # Continue with next child (error resilience)
                 continue
 

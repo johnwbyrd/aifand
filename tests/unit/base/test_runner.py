@@ -6,7 +6,11 @@ import time
 import pytest
 
 from src.aifand.base.pipeline import Pipeline
-from src.aifand.base.runner import FastRunner, StandardRunner, TimeSource
+from src.aifand.base.runner import (
+    FastRunner,
+    StandardRunner,
+    TimeSource,
+)
 
 from .mocks import MockProcess, MockTimedPipeline
 
@@ -53,7 +57,9 @@ class TestTimeSource:
 
         def thread_function(thread_id):
             pipeline = Pipeline(name=f"test_{thread_id}")
-            runner = StandardRunner(name=f"runner_{thread_id}", main_process=pipeline)
+            runner = StandardRunner(
+                name=f"runner_{thread_id}", main_process=pipeline
+            )
             TimeSource.set_current(runner)
             results[thread_id] = TimeSource.get_current()
 
@@ -98,8 +104,13 @@ class TestStandardRunner:
         assert len(proc.execution_timestamps) >= 1
 
     def test_standard_runner_timing_respect(self):
-        """Test StandardRunner respects process timing preferences with short intervals."""
-        proc = MockTimedPipeline(name="test_proc", interval_ns=25_000_000)  # 25ms
+        """Test StandardRunner respects process timing preferences.
+
+        Test with short intervals.
+        """
+        proc = MockTimedPipeline(
+            name="test_proc", interval_ns=25_000_000
+        )  # 25ms
         runner = StandardRunner(name="test_runner", main_process=proc)
 
         runner.start()
@@ -111,7 +122,9 @@ class TestStandardRunner:
 
         # Check intervals between executions are roughly correct
         if len(proc.execution_timestamps) >= 2:
-            interval_ns = proc.execution_timestamps[1] - proc.execution_timestamps[0]
+            interval_ns = (
+                proc.execution_timestamps[1] - proc.execution_timestamps[0]
+            )
             # Allow some tolerance (±10ms)
             assert 15_000_000 <= interval_ns <= 35_000_000
 
@@ -121,7 +134,9 @@ class TestStandardRunner:
 
         class FailingProcess(FailingMixin, MockProcess):
             def __init__(self, name: str):
-                super().__init__(name=name, fail_after=2, interval_ns=20_000_000)  # 20ms, fail after 2 executions
+                super().__init__(
+                    name=name, fail_after=2, interval_ns=20_000_000
+                )  # 20ms, fail after 2 executions
 
         proc = FailingProcess("failing_proc")
         runner = StandardRunner(name="test_runner", main_process=proc)
@@ -164,7 +179,9 @@ class TestFastRunner:
 
     def test_fast_runner_duration_execution(self):
         """Test FastRunner run_for_duration() method."""
-        proc = MockTimedPipeline(name="test_proc", interval_ns=50_000_000)  # 50ms
+        proc = MockTimedPipeline(
+            name="test_proc", interval_ns=50_000_000
+        )  # 50ms
         runner = FastRunner(name="test_runner", main_process=proc)
 
         # Run for 200ms of simulation time
@@ -175,8 +192,13 @@ class TestFastRunner:
         assert 3 <= len(proc.execution_timestamps) <= 5
 
     def test_fast_runner_deterministic_execution(self):
-        """Test FastRunner provides deterministic execution without real delays."""
-        proc = MockTimedPipeline(name="test_proc", interval_ns=100_000_000)  # 100ms
+        """Test FastRunner provides deterministic execution.
+
+        Test without real delays.
+        """
+        proc = MockTimedPipeline(
+            name="test_proc", interval_ns=100_000_000
+        )  # 100ms
         runner = FastRunner(name="test_runner", main_process=proc)
 
         # Multiple runs should be deterministic
@@ -193,8 +215,14 @@ class TestFastRunner:
 
     def test_fast_runner_safety_limits(self):
         """Test FastRunner safety limits prevent infinite loops."""
-        proc = MockProcess(name="test_proc", interval_ns=1_000_000)  # 1ms - very fast
-        runner = FastRunner(name="test_runner", main_process=proc, max_duration_ns=100_000_000)  # 100ms limit
+        proc = MockProcess(
+            name="test_proc", interval_ns=1_000_000
+        )  # 1ms - very fast
+        runner = FastRunner(
+            name="test_runner",
+            main_process=proc,
+            max_duration_ns=100_000_000,
+        )  # 100ms limit
 
         # Try to run for longer than limit
         runner.run_for_duration(1.0)  # 1 second requested
@@ -208,7 +236,10 @@ class TestRunnerIntegration:
     """Test Runner integration with Process hierarchy."""
 
     def test_runner_time_source_integration(self):
-        """Test Process.get_time() correctly uses runner-provided time sources."""
+        """Test Process.get_time() correctly uses runner time sources.
+
+        Test runner-provided time sources.
+        """
         proc = MockProcess(name="test_proc", interval_ns=50_000_000)
         runner = FastRunner(name="test_runner", main_process=proc)
 
@@ -237,7 +268,8 @@ class TestRunnerIntegration:
         # Run simulation
         runner.run_for_duration(0.1)
 
-        # All processes should have initialized timing with simulation time (starting at 0)
+        # All processes should have initialized timing with simulation time
+        # (starting at 0)
         assert pipeline.start_time == 0
         assert inner_proc1.start_time == 0
         assert inner_proc2.start_time == 0
@@ -252,8 +284,12 @@ class TestRunnerIntegration:
         results = {}
 
         def run_system(system_id):
-            proc = MockProcess(name=f"proc_{system_id}", interval_ns=30_000_000)  # 30ms
-            runner = StandardRunner(name=f"runner_{system_id}", main_process=proc)
+            proc = MockProcess(
+                name=f"proc_{system_id}", interval_ns=30_000_000
+            )  # 30ms
+            runner = StandardRunner(
+                name=f"runner_{system_id}", main_process=proc
+            )
 
             runner.start()
             time.sleep(0.06)  # 60ms

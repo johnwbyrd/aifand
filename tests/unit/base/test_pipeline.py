@@ -25,7 +25,9 @@ class TestPipelineSerialCoordination:
             def _execute(self, states):
                 result = super()._execute(states)
                 if "data" in result:
-                    sensor = Sensor(name=self.add_device, properties={"value": 25.0})
+                    sensor = Sensor(
+                        name=self.add_device, properties={"value": 25.0}
+                    )
                     result["data"] = result["data"].with_device(sensor)
                 return result
 
@@ -122,10 +124,16 @@ class TestPipelineSerialCoordination:
         # Should pass states through unchanged
         assert result_states == input_states
         assert result_states["actual"].has_device("temp")
-        assert result_states["actual"].get_device("temp").properties["value"] == 30.0
+        assert (
+            result_states["actual"].get_device("temp").properties["value"]
+            == 30.0
+        )
 
     def test_pipeline_list_storage(self):
-        """Test child management operations work correctly with internal list."""
+        """Test child management operations work correctly.
+
+        Test with internal list.
+        """
         pipeline = Pipeline(name="test_pipeline")
 
         # Test list storage directly

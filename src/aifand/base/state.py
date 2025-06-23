@@ -22,7 +22,10 @@ class State(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    devices: Dict[str, Device] = Field(default_factory=dict, description="Collection of devices indexed by name")
+    devices: Dict[str, Device] = Field(
+        default_factory=dict,
+        description="Collection of devices indexed by name",
+    )
 
     def get_device(self, name: str) -> Device | None:
         """Get a device by name, returning None if not found."""
@@ -46,9 +49,12 @@ class State(BaseModel):
         from .permissions import can_process_modify_device
 
         modifying_process = self._find_calling_process()
-        if modifying_process and not can_process_modify_device(modifying_process, device):
+        if modifying_process and not can_process_modify_device(
+            modifying_process, device
+        ):
             raise PermissionError(
-                f"{modifying_process.__class__.__name__} cannot modify {device.__class__.__name__} '{device.name}'"
+                f"{modifying_process.__class__.__name__} cannot modify "
+                f"{device.__class__.__name__} '{device.name}'"
             )
 
         new_devices = dict(self.devices)
@@ -65,7 +71,7 @@ class State(BaseModel):
             for device in devices.values():
                 if not can_process_modify_device(modifying_process, device):
                     raise PermissionError(
-                        f"{modifying_process.__class__.__name__} cannot modify "
+                        f"{modifying_process.__class__.__name__} cannot modify"
                         f"{device.__class__.__name__} '{device.name}'"
                     )
 

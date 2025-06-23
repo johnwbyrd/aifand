@@ -22,7 +22,10 @@ class TestLargeScaleCoordination:
         # Create 50 processes with intervals from 10ms to 200ms
         for i in range(50):
             interval_ms = 10 + (i * 4)  # 10, 14, 18, 22, ... 206ms
-            proc = MockTimedPipeline(name=f"proc_{i:02d}_{interval_ms}ms", interval_ns=interval_ms * 1_000_000)
+            proc = MockTimedPipeline(
+                name=f"proc_{i:02d}_{interval_ms}ms",
+                interval_ns=interval_ms * 1_000_000,
+            )
             processes.append(proc)
             system.append(proc)
 
@@ -32,22 +35,31 @@ class TestLargeScaleCoordination:
 
         # Verify all processes executed at least once
         for i, proc in enumerate(processes):
-            assert len(proc.execution_timestamps) > 0, f"Process {i} never executed"
+            assert len(proc.execution_timestamps) > 0, (
+                f"Process {i} never executed"
+            )
 
         # Verify execution counts are reasonable for each interval
         for i, proc in enumerate(processes):
             interval_ms = 10 + (i * 4)
-            expected_count = (1000 - 1) // interval_ms + 1  # Correct calculation for FastRunner timing
+            expected_count = (
+                1000 - 1
+            ) // interval_ms + 1  # Correct calculation for FastRunner timing
             tolerance = 2  # Allow small tolerance for coordination overhead
             actual_count = len(proc.execution_timestamps)
             assert abs(actual_count - expected_count) <= tolerance, (
-                f"Process {i} ({interval_ms}ms): expected ~{expected_count}, got {actual_count}"
+                f"Process {i} ({interval_ms}ms): expected ~{expected_count}, "
+                f"got {actual_count}"
             )
 
         # Verify total execution count is reasonable
-        total_executions = sum(len(proc.execution_timestamps) for proc in processes)
+        total_executions = sum(
+            len(proc.execution_timestamps) for proc in processes
+        )
         # Rough estimate: should be reasonable for 50 processes over 1 second
-        assert 500 <= total_executions <= 5000, f"Total executions {total_executions} seems unreasonable"
+        assert 500 <= total_executions <= 5000, (
+            f"Total executions {total_executions} seems unreasonable"
+        )
 
     def test_hundred_process_coordination(self):
         """Test coordination with 100 processes to stress the system."""
@@ -57,7 +69,10 @@ class TestLargeScaleCoordination:
         # Create 100 processes with intervals from 5ms to 500ms
         for i in range(100):
             interval_ms = 5 + (i * 5)  # 5, 10, 15, 20, ... 500ms
-            proc = MockTimedPipeline(name=f"proc_{i:03d}_{interval_ms}ms", interval_ns=interval_ms * 1_000_000)
+            proc = MockTimedPipeline(
+                name=f"proc_{i:03d}_{interval_ms}ms",
+                interval_ns=interval_ms * 1_000_000,
+            )
             processes.append(proc)
             system.append(proc)
 
@@ -67,18 +82,25 @@ class TestLargeScaleCoordination:
 
         # Verify all processes executed at least once
         for i, proc in enumerate(processes):
-            assert len(proc.execution_timestamps) > 0, f"Process {i} never executed"
+            assert len(proc.execution_timestamps) > 0, (
+                f"Process {i} never executed"
+            )
 
         # Verify no process was starved (got reasonable execution time)
         for i, proc in enumerate(processes):
             interval_ms = 5 + (i * 5)
-            expected_count = (2000 - 1) // interval_ms + 1  # Correct calculation for 2 seconds
+            expected_count = (
+                2000 - 1
+            ) // interval_ms + 1  # Correct calculation for 2 seconds
             actual_count = len(proc.execution_timestamps)
 
             # Allow wider tolerance for 100 processes
-            tolerance = max(2, expected_count // 10)  # At least 2, or 10% tolerance
+            tolerance = max(
+                2, expected_count // 10
+            )  # At least 2, or 10% tolerance
             assert abs(actual_count - expected_count) <= tolerance, (
-                f"Process {i} ({interval_ms}ms): expected ~{expected_count}, got {actual_count}"
+                f"Process {i} ({interval_ms}ms): expected ~{expected_count}, "
+                f"got {actual_count}"
             )
 
     def test_mixed_load_patterns(self):
@@ -93,21 +115,30 @@ class TestLargeScaleCoordination:
         # 20 fast processes
         for i in range(20):
             interval_ms = 1 + i  # 1, 2, 3, ... 20ms
-            proc = MockTimedPipeline(name=f"fast_{i:02d}_{interval_ms}ms", interval_ns=interval_ms * 1_000_000)
+            proc = MockTimedPipeline(
+                name=f"fast_{i:02d}_{interval_ms}ms",
+                interval_ns=interval_ms * 1_000_000,
+            )
             fast_processes.append(proc)
             system.append(proc)
 
         # 10 medium processes
         for i in range(10):
             interval_ms = 50 + (i * 5)  # 50, 55, 60, ... 95ms
-            proc = MockTimedPipeline(name=f"medium_{i:02d}_{interval_ms}ms", interval_ns=interval_ms * 1_000_000)
+            proc = MockTimedPipeline(
+                name=f"medium_{i:02d}_{interval_ms}ms",
+                interval_ns=interval_ms * 1_000_000,
+            )
             medium_processes.append(proc)
             system.append(proc)
 
         # 5 slow processes
         for i in range(5):
             interval_ms = 500 + (i * 100)  # 500, 600, 700, 800, 900ms
-            proc = MockTimedPipeline(name=f"slow_{i:02d}_{interval_ms}ms", interval_ns=interval_ms * 1_000_000)
+            proc = MockTimedPipeline(
+                name=f"slow_{i:02d}_{interval_ms}ms",
+                interval_ns=interval_ms * 1_000_000,
+            )
             slow_processes.append(proc)
             system.append(proc)
 
@@ -117,22 +148,31 @@ class TestLargeScaleCoordination:
 
         # Verify fast processes executed frequently
         for proc in fast_processes:
-            assert len(proc.execution_timestamps) >= 100, "Fast processes should execute frequently"
+            assert len(proc.execution_timestamps) >= 100, (
+                "Fast processes should execute frequently"
+            )
 
         # Verify medium processes executed moderately
         for proc in medium_processes:
-            assert 20 <= len(proc.execution_timestamps) <= 80, "Medium processes should execute moderately"
+            assert 20 <= len(proc.execution_timestamps) <= 80, (
+                "Medium processes should execute moderately"
+            )
 
         # Verify slow processes executed but not frequently
         for proc in slow_processes:
-            assert 1 <= len(proc.execution_timestamps) <= 10, "Slow processes should execute infrequently"
+            assert 1 <= len(proc.execution_timestamps) <= 10, (
+                "Slow processes should execute infrequently"
+            )
 
 
 class TestSimultaneousReadiness:
     """Test System behavior when many processes are ready simultaneously."""
 
     def test_identical_intervals_simultaneous_execution(self):
-        """Test many processes with identical intervals executing simultaneously."""
+        """Test many processes with identical intervals.
+
+        Test executing simultaneously.
+        """
         system = System(name="simultaneous_test")
         processes = []
 
@@ -150,18 +190,27 @@ class TestSimultaneousReadiness:
         runner.run_for_duration(0.5)
 
         # All processes should execute the same number of times
-        expected_count = (500 - 1) // 50 + 1  # Correct calculation for 500ms, 50ms interval
+        expected_count = (
+            500 - 1
+        ) // 50 + 1  # Correct calculation for 500ms, 50ms interval
         for i, proc in enumerate(processes):
             actual_count = len(proc.execution_timestamps)
-            assert actual_count == expected_count, f"Process {i}: expected {expected_count}, got {actual_count}"
+            assert actual_count == expected_count, (
+                f"Process {i}: expected {expected_count}, got {actual_count}"
+            )
 
         # All processes should execute at the same times
         reference_timestamps = processes[0].execution_timestamps
         for i, proc in enumerate(processes[1:], 1):
-            assert proc.execution_timestamps == reference_timestamps, f"Process {i} timestamps differ from reference"
+            assert proc.execution_timestamps == reference_timestamps, (
+                f"Process {i} timestamps differ from reference"
+            )
 
     def test_harmonic_intervals_coordination(self):
-        """Test processes with harmonic intervals (multiples of base frequency)."""
+        """Test processes with harmonic intervals.
+
+        Test multiples of base frequency.
+        """
         system = System(name="harmonic_test")
 
         # Create processes with harmonic intervals: 10ms, 20ms, 40ms, 80ms
@@ -169,7 +218,10 @@ class TestSimultaneousReadiness:
         processes = []
 
         for multiplier in [1, 2, 4, 8]:
-            proc = MockTimedPipeline(name=f"harmonic_{multiplier}x", interval_ns=base_interval * multiplier)
+            proc = MockTimedPipeline(
+                name=f"harmonic_{multiplier}x",
+                interval_ns=base_interval * multiplier,
+            )
             processes.append(proc)
             system.append(proc)
 
@@ -184,12 +236,20 @@ class TestSimultaneousReadiness:
         # 80ms: (800-1)/80 + 1 = 9 + 1 = 10 executions
         expected_counts = [80, 40, 20, 10]
 
-        for i, (proc, expected) in enumerate(zip(processes, expected_counts, strict=False)):
+        for i, (proc, expected) in enumerate(
+            zip(processes, expected_counts, strict=False)
+        ):
             actual_count = len(proc.execution_timestamps)
-            assert actual_count == expected, f"Harmonic process {i}: expected {expected}, got {actual_count}"
+            assert actual_count == expected, (
+                f"Harmonic process {i}: expected {expected}, "
+                f"got {actual_count}"
+            )
 
     def test_burst_synchronization(self):
-        """Test coordination when processes synchronize at regular intervals."""
+        """Test coordination when processes synchronize.
+
+        Test at regular intervals.
+        """
         system = System(name="burst_sync_test")
 
         # Create processes that synchronize every 60ms (LCM of 12, 15, 20)
@@ -197,7 +257,10 @@ class TestSimultaneousReadiness:
         processes = []
 
         for interval in intervals_ms:
-            proc = MockTimedPipeline(name=f"sync_{interval}ms", interval_ns=interval * 1_000_000)
+            proc = MockTimedPipeline(
+                name=f"sync_{interval}ms",
+                interval_ns=interval * 1_000_000,
+            )
             processes.append(proc)
             system.append(proc)
 
@@ -211,20 +274,32 @@ class TestSimultaneousReadiness:
         # 20ms: (240-1)/20 + 1 = 11 + 1 = 12 executions
         expected_counts = [20, 16, 12]
 
-        for i, (proc, expected) in enumerate(zip(processes, expected_counts, strict=False)):
+        for i, (proc, expected) in enumerate(
+            zip(processes, expected_counts, strict=False)
+        ):
             actual_count = len(proc.execution_timestamps)
             assert actual_count == expected, (
-                f"Sync process {intervals_ms[i]}ms: expected {expected}, got {actual_count}"
+                f"Sync process {intervals_ms[i]}ms: expected {expected}, "
+                f"got {actual_count}"
             )
 
         # Verify synchronization points at 0, 60, 120, 180ms
-        sync_points = [0, 60_000_000, 120_000_000, 180_000_000]  # In nanoseconds
+        sync_points = [
+            0,
+            60_000_000,
+            120_000_000,
+            180_000_000,
+        ]  # In nanoseconds
 
         for sync_point in sync_points:
-            # Check that all processes have executions at or very close to sync points
+            # Check that all processes have executions at or very close to
+            # sync points
             for proc in processes:
                 # Find closest execution to sync point
-                closest_time = min(proc.execution_timestamps, key=lambda t: abs(t - sync_point))
+                closest_time = min(
+                    proc.execution_timestamps,
+                    key=lambda t: abs(t - sync_point),
+                )
                 # Should be exactly at sync point (within 1ms tolerance)
                 assert abs(closest_time - sync_point) <= 1_000_000, (
                     f"Process {proc.name} not synchronized at {sync_point}ns"
@@ -261,10 +336,13 @@ class TestStressEdgeCases:
         # 1000μs: (10000-1)/1000 + 1 = 9 + 1 = 10 executions
         expected_counts = [100, 50, 20, 10]
 
-        for i, (proc, expected) in enumerate(zip(processes, expected_counts, strict=False)):
+        for i, (proc, expected) in enumerate(
+            zip(processes, expected_counts, strict=False)
+        ):
             actual_count = len(proc.execution_timestamps)
             assert actual_count == expected, (
-                f"Fast process {intervals_us[i]}μs: expected {expected}, got {actual_count}"
+                f"Fast process {intervals_us[i]}μs: expected {expected}, "
+                f"got {actual_count}"
             )
 
     def test_irregular_intervals(self):
@@ -272,13 +350,21 @@ class TestStressEdgeCases:
         system = System(name="irregular_test")
 
         # Create processes with irregular intervals
-        irregular_intervals_ms = [7.3, 13.7, 23.1, 41.9, 67.2]  # Non-round numbers
+        irregular_intervals_ms = [
+            7.3,
+            13.7,
+            23.1,
+            41.9,
+            67.2,
+        ]  # Non-round numbers
         processes = []
 
         for interval_ms in irregular_intervals_ms:
             proc = MockTimedPipeline(
                 name=f"irregular_{interval_ms}ms",
-                interval_ns=int(interval_ms * 1_000_000),  # Convert to nanoseconds
+                interval_ns=int(
+                    interval_ms * 1_000_000
+                ),  # Convert to nanoseconds
             )
             processes.append(proc)
             system.append(proc)
@@ -288,14 +374,24 @@ class TestStressEdgeCases:
         runner.run_for_duration(1.0)
 
         # Verify execution counts for irregular intervals
-        for proc, interval_ms in zip(processes, irregular_intervals_ms, strict=False):
+        for proc, interval_ms in zip(
+            processes, irregular_intervals_ms, strict=False
+        ):
             duration_ns = 1000 * 1_000_000  # 1000ms in nanoseconds
-            interval_ns = int(interval_ms * 1_000_000)  # Convert to nanoseconds
-            expected_count = (duration_ns - 1) // interval_ns + 1  # Correct calculation
+            interval_ns = int(
+                interval_ms * 1_000_000
+            )  # Convert to nanoseconds
+            expected_count = (
+                duration_ns - 1
+            ) // interval_ns + 1  # Correct calculation
             actual_count = len(proc.execution_timestamps)
 
-            # Allow tolerance for irregular intervals and floating point precision
-            tolerance = max(2, expected_count // 5)  # At least 2, or 20% tolerance
+            # Allow tolerance for irregular intervals and floating point
+            # precision
+            tolerance = max(
+                2, expected_count // 5
+            )  # At least 2, or 20% tolerance
             assert abs(actual_count - expected_count) <= tolerance, (
-                f"Irregular process {interval_ms}ms: expected ~{expected_count}, got {actual_count}"
+                f"Irregular process {interval_ms}ms: expected "
+                f"~{expected_count}, got {actual_count}"
             )

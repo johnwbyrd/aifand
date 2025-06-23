@@ -1,8 +1,9 @@
 """Process classes for thermal management system execution.
 
 CRITICAL: Process base class MUST NOT store persistent state!
-State persistence is handled by concrete subclasses (Pipeline, System) that have explicit
-state management fields. The Process base class provides execution framework only.
+State persistence is handled by concrete subclasses (Pipeline, System)
+that have explicit state management fields. The Process base class
+provides execution framework only.
 DO NOT ADD STATE STORAGE TO THIS FILE!  NOT IN ATTRIBUTES, NOT IN METHODS!
 THIS MEANS YOU, CLAUDE!
 """
@@ -19,12 +20,14 @@ from .state import State
 
 
 class Process(Entity, ABC):
-    """Base class for computational units that transform thermal management data.
+    """Base class for computational units that transform thermal management.
 
-    A Process represents a computational unit that transforms states within the system.
-    Processes can contain child processes that execute in serial order, forming
-    execution pipelines. Each process receives a dictionary of named states and
-    produces a transformed dictionary of states.
+    Base class for computational units that transform thermal management data.
+
+    A Process represents a computational unit that transforms states within
+    the system. Processes can contain child processes that execute in serial
+    order, forming execution pipelines. Each process receives a dictionary of
+    named states and produces a transformed dictionary of states.
 
     Process supports two execution modes:
     1. Stateless execution via execute() for transformations
@@ -33,12 +36,15 @@ class Process(Entity, ABC):
     Key characteristics:
     - Stateless execution: No data persists between execute() calls
     - Pipeline: Child processes execute serially with state passthrough
-    - Error resilient: Exceptions are caught, logged, and execution continues
-    - Immutable input states: Input states are never modified (deep copy used)
+    - Error resilient: Exceptions are caught, logged, and execution
+      continues
+    - Immutable input states: Input states are never modified (deep copy
+      used)
     - Mutable structure: Process structure can be modified for construction
     - Template method timing: Subclasses override timing strategies
 
-    Subclasses must implement _process() and timing methods to define their specific logic.
+    Subclasses must implement _process() and timing methods to define their
+    specific logic.
     """
 
     model_config = ConfigDict(extra="allow", frozen=False)
@@ -46,23 +52,37 @@ class Process(Entity, ABC):
     # Timing configuration
     interval_ns: int = Field(
         default=100_000_000,  # 100ms in nanoseconds
-        description="Default execution interval in nanoseconds for timing-driven mode",
+        description="Default execution interval in nanoseconds for "
+        "timing-driven mode",
     )
 
     # Runtime timing state (mutable during execution)
-    start_time: int = Field(default=0, description="Start time of current timing loop execution (nanoseconds)")
-    execution_count: int = Field(default=0, description="Number of completed execution cycles in timing mode")
-    stop_requested: bool = Field(default=False, description="Whether graceful stop has been requested")
+    start_time: int = Field(
+        default=0,
+        description="Start time of current timing loop execution "
+        "(nanoseconds)",
+    )
+    execution_count: int = Field(
+        default=0,
+        description="Number of completed execution cycles in timing mode",
+    )
+    stop_requested: bool = Field(
+        default=False,
+        description="Whether graceful stop has been requested",
+    )
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         # Create a logger specific to this process instance
-        self._logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}")
+        self._logger = logging.getLogger(
+            f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}"
+        )
 
     def execute(self, states: Dict[str, State]) -> Dict[str, State]:
         """Execute this process, transforming the input states.
 
-        Template method that calls _execute() and automatically updates execution count.
+        Template method that calls _execute() and automatically updates
+        execution count.
 
         Args:
             states: Dictionary of named states (e.g., "actual", "desired")
@@ -71,7 +91,8 @@ class Process(Entity, ABC):
             Dictionary of transformed states
 
         Note:
-            Input states are never modified. All transformations work on copies.
+            Input states are never modified. All transformations work on
+            copies.
 
         """
         try:
@@ -95,7 +116,8 @@ class Process(Entity, ABC):
             Dictionary of transformed states
 
         Note:
-            Input states are never modified. All transformations work on copies.
+            Input states are never modified. All transformations work on
+            copies.
 
         """
 
@@ -179,9 +201,10 @@ class Environment(Process, ABC):
 class Controller(Process, ABC):
     """Abstract base class for control logic.
 
-    Controllers implement decision-making logic that determines actuator settings
-    based on sensor readings. They can read and modify actuators in their output
-    state, but should only read sensors from their input state.
+    Controllers implement decision-making logic that determines actuator
+    settings based on sensor readings. They can read and modify actuators
+    in their output state, but should only read sensors from their input
+    state.
     """
 
     @abstractmethod

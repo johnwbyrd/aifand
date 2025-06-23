@@ -19,7 +19,9 @@ class TestEntity:
         assert isinstance(entity.uuid, UUID)
         assert entity.uuid is not None
 
-    def test_entity_creation_with_provided_uuid(self, sample_uuid, sample_name):
+    def test_entity_creation_with_provided_uuid(
+        self, sample_uuid, sample_name
+    ):
         """Test entity creation with explicitly provided UUID."""
         entity = Entity(uuid=sample_uuid, name=sample_name)
 
@@ -100,7 +102,12 @@ class TestEntity:
         assert "Entity(" in repr_str
 
         # Test representation with arbitrary fields
-        entity_with_extras = Entity(uuid=sample_uuid, name=sample_name, temperature=72.5, status="active")
+        entity_with_extras = Entity(
+            uuid=sample_uuid,
+            name=sample_name,
+            temperature=72.5,
+            status="active",
+        )
 
         repr_with_extras = repr(entity_with_extras)
         assert sample_name in repr_with_extras
@@ -126,12 +133,20 @@ class TestEntity:
         assert entity.name == sample_name
         assert entity.temperature == 72.5
         assert entity.status == "active"
-        assert entity.metadata == {"sensor_type": "thermal", "location": "cpu"}
+        assert entity.metadata == {
+            "sensor_type": "thermal",
+            "location": "cpu",
+        }
         assert entity.count == 42
         assert entity.enabled is True
 
-    def test_entity_arbitrary_fields_serialization(self, sample_uuid, sample_name):
-        """Test that arbitrary fields are properly serialized and deserialized."""
+    def test_entity_arbitrary_fields_serialization(
+        self, sample_uuid, sample_name
+    ):
+        """Test that arbitrary fields are properly serialized.
+
+        Test deserialization roundtrip.
+        """
         original_data = {
             "uuid": sample_uuid,
             "name": sample_name,
@@ -169,9 +184,15 @@ class TestEntity:
 
     def test_entity_arbitrary_fields_equality(self, sample_uuid, sample_name):
         """Test that arbitrary fields are included in equality comparison."""
-        entity1 = Entity(uuid=sample_uuid, name=sample_name, extra_field="value1")
-        entity2 = Entity(uuid=sample_uuid, name=sample_name, extra_field="value1")
-        entity3 = Entity(uuid=sample_uuid, name=sample_name, extra_field="value2")
+        entity1 = Entity(
+            uuid=sample_uuid, name=sample_name, extra_field="value1"
+        )
+        entity2 = Entity(
+            uuid=sample_uuid, name=sample_name, extra_field="value1"
+        )
+        entity3 = Entity(
+            uuid=sample_uuid, name=sample_name, extra_field="value2"
+        )
 
         # Same arbitrary fields should be equal
         assert entity1 == entity2
@@ -180,8 +201,15 @@ class TestEntity:
         assert entity1 != entity3
 
     def test_entity_arbitrary_fields_access(self, sample_uuid, sample_name):
-        """Test accessing arbitrary fields through attribute and dict-like access."""
-        entity = Entity(uuid=sample_uuid, name=sample_name, dynamic_field="dynamic_value")
+        """Test accessing arbitrary fields through attribute access.
+
+        Test dict-like access.
+        """
+        entity = Entity(
+            uuid=sample_uuid,
+            name=sample_name,
+            dynamic_field="dynamic_value",
+        )
 
         # Test attribute access
         assert entity.dynamic_field == "dynamic_value"
@@ -190,7 +218,9 @@ class TestEntity:
         data = entity.model_dump()
         assert data["dynamic_field"] == "dynamic_value"
 
-    def test_entity_inheritance_with_arbitrary_fields(self, sample_uuid, sample_name):
+    def test_entity_inheritance_with_arbitrary_fields(
+        self, sample_uuid, sample_name
+    ):
         """Test that inheritance works with arbitrary fields."""
 
         class TestSubEntity(Entity):
@@ -198,7 +228,10 @@ class TestEntity:
 
         # Create with both typed and arbitrary fields
         sub_entity = TestSubEntity(
-            uuid=sample_uuid, name=sample_name, typed_field="typed_value", arbitrary_field="arbitrary_value"
+            uuid=sample_uuid,
+            name=sample_name,
+            typed_field="typed_value",
+            arbitrary_field="arbitrary_value",
         )
 
         assert isinstance(sub_entity, Entity)

@@ -60,7 +60,8 @@ class TestDevicePermissions:
         actuator = Actuator(name="cpu_fan", properties={"value": 128})
         state = State()
 
-        # This should work - Environment can modify actuators (called from execute context)
+        # This should work - Environment can modify actuators
+        # (called from execute context)
         result_states = env.execute({"actual": state.with_device(actuator)})
         assert "actual" in result_states
 
@@ -70,7 +71,10 @@ class TestDevicePermissions:
         state = State()
 
         # This should fail - Controller cannot modify sensors
-        with pytest.raises(PermissionError, match="SensorModifyingController cannot modify Sensor 'cpu_temp'"):
+        with pytest.raises(
+            PermissionError,
+            match="SensorModifyingController cannot modify Sensor 'cpu_temp'",
+        ):
             controller.execute({"actual": state})
 
     def test_controller_can_modify_actuator(self):
@@ -90,14 +94,18 @@ class TestDevicePermissions:
         class PIDSensorModifier(MockController):
             def _execute(self, states):
                 if "actual" in states:
-                    sensor = Sensor(name="cpu_temp", properties={"value": 50.0})
+                    sensor = Sensor(
+                        name="cpu_temp", properties={"value": 50.0}
+                    )
                     states["actual"] = states["actual"].with_device(sensor)
                 return states
 
         class PIDActuatorModifier(MockController):
             def _execute(self, states):
                 if "actual" in states:
-                    actuator = Actuator(name="cpu_fan", properties={"value": 128})
+                    actuator = Actuator(
+                        name="cpu_fan", properties={"value": 128}
+                    )
                     states["actual"] = states["actual"].with_device(actuator)
                 return states
 
@@ -111,7 +119,10 @@ class TestDevicePermissions:
 
         # PID should NOT be able to modify sensors (inherits from Controller)
         pid_sensor = PIDSensorModifier(name="pid_sensor")
-        with pytest.raises(PermissionError, match="PIDSensorModifier cannot modify Sensor 'cpu_temp'"):
+        with pytest.raises(
+            PermissionError,
+            match="PIDSensorModifier cannot modify Sensor 'cpu_temp'",
+        ):
             pid_sensor.execute({"actual": state})
 
     def test_permission_bypass_outside_process_context(self):

@@ -21,7 +21,13 @@ class TestDevice:
 
     def test_device_creation_with_properties(self):
         """Test creating a device with property values."""
-        properties = {"value": 45.2, "unit": "°C", "min": 0.0, "max": 100.0, "label": "CPU Temperature"}
+        properties = {
+            "value": 45.2,
+            "unit": "°C",
+            "min": 0.0,
+            "max": 100.0,
+            "label": "CPU Temperature",
+        }
         device = Device(name="cpu_temp", properties=properties)
 
         assert device.name == "cpu_temp"
@@ -31,7 +37,10 @@ class TestDevice:
 
     def test_device_properties_access(self):
         """Test accessing properties directly."""
-        device = Device(name="fan_controller", properties={"pwm": 128, "max_pwm": 255})
+        device = Device(
+            name="fan_controller",
+            properties={"pwm": 128, "max_pwm": 255},
+        )
 
         assert device.properties["pwm"] == 128
         assert device.properties["max_pwm"] == 255
@@ -40,12 +49,18 @@ class TestDevice:
         """Test that device properties cannot be modified after creation."""
         device = Device(name="test", properties={"value": 50})
 
-        with pytest.raises(ValidationError):  # pydantic frozen model raises ValidationError
+        with pytest.raises(
+            ValidationError
+        ):  # pydantic frozen model raises ValidationError
             device.properties = {"value": 60}
 
     def test_device_serialization(self):
         """Test device serialization to dict/JSON."""
-        properties = {"value": 23.5, "unit": "°C", "hwmon_path": "/sys/class/hwmon/hwmon0/temp1_input"}
+        properties = {
+            "value": 23.5,
+            "unit": "°C",
+            "hwmon_path": "/sys/class/hwmon/hwmon0/temp1_input",
+        }
         device = Device(name="motherboard_temp", properties=properties)
 
         data = device.model_dump(mode="json")
@@ -56,7 +71,15 @@ class TestDevice:
 
     def test_device_deserialization(self):
         """Test creating device from dict/JSON data."""
-        data = {"uuid": str(uuid4()), "name": "gpu_temp", "properties": {"value": 68.0, "unit": "°C", "critical": 95.0}}
+        data = {
+            "uuid": str(uuid4()),
+            "name": "gpu_temp",
+            "properties": {
+                "value": 68.0,
+                "unit": "°C",
+                "critical": 95.0,
+            },
+        }
 
         device = Device.model_validate(data)
 
@@ -79,7 +102,9 @@ class TestDevice:
 
     def test_device_representation(self):
         """Test device string representation shows all fields."""
-        device = Device(name="test_device", properties={"value": 100, "unit": "W"})
+        device = Device(
+            name="test_device", properties={"value": 100, "unit": "W"}
+        )
 
         repr_str = repr(device)
 
@@ -206,7 +231,7 @@ class TestDevicePropertyConventions:
                 "max": 100.0,  # Maximum operating temperature
                 "critical": 90.0,  # Critical temperature threshold
                 "label": "CPU Temperature",  # Human-readable label
-                "hwmon_path": "/sys/class/hwmon/hwmon0/temp1_input",  # Linux hwmon path
+                "hwmon_path": "/sys/class/hwmon/hwmon0/temp1_input",  # hwmon
                 "scale": 0.001,  # Scaling factor (millidegrees to degrees)
             },
         )
@@ -232,7 +257,7 @@ class TestDevicePropertyConventions:
                 "min": 0,  # Minimum RPM (stopped)
                 "max": 2000,  # Maximum RPM
                 "label": "Case Fan",  # Human-readable label
-                "hwmon_path": "/sys/class/hwmon/hwmon1/fan1_input",  # Linux hwmon path
+                "hwmon_path": "/sys/class/hwmon/hwmon1/fan1_input",  # hwmon
             },
         )
 
@@ -252,7 +277,7 @@ class TestDevicePropertyConventions:
                 "max": 255,  # Maximum PWM (full speed)
                 "label": "CPU Fan Control",  # Human-readable label
                 "hwmon_path": "/sys/class/hwmon/hwmon0/pwm1",  # Control path
-                "enable_path": "/sys/class/hwmon/hwmon0/pwm1_enable",  # Enable path
+                "enable_path": "/sys/class/hwmon/hwmon0/pwm1_enable",  # Enable
             },
         )
 
@@ -272,7 +297,7 @@ class TestDevicePropertyConventions:
                 "min": 50.0,  # Minimum safe limit
                 "max": 100.0,  # Maximum hardware limit
                 "label": "CPU Thermal Limit",  # Human-readable label
-                "hwmon_path": "/sys/class/hwmon/hwmon0/temp1_max",  # Hardware limit path
+                "hwmon_path": "/sys/class/hwmon/hwmon0/temp1_max",  # Limit
             },
         )
 
