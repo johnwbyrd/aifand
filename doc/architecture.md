@@ -32,7 +32,7 @@ Process includes timing infrastructure with `interval_ns` field for execution in
 
 Process execution characteristics include immutable data flow where input states are never modified, error resilience where exceptions are caught and logged without aborting thermal control, and per-process logging with hierarchical logger names.
 
-Device modification permissions enforce thermal management domain rules through runtime validation. Environment processes can read and modify both Sensors and Actuators (hardware interface responsibility), while Controller processes can only modify Actuators (decision-making responsibility). This separation prevents Controllers from corrupting sensor readings while allowing proper thermal control. Permission checking uses call stack inspection to identify the modifying process and validates against a class-based permission matrix.
+Device modification permissions enforce thermal management domain rules through runtime validation. Environment processes can read and modify Sensors but can only read Actuators from their input state (hardware interface responsibility), while Controller processes can only modify Actuators but can only read Sensors from their input state (decision-making responsibility). This separation prevents Controllers from corrupting sensor readings and prevents Environments from bypassing controller decisions. Permission checking uses call stack inspection to identify the modifying process and validates against a class-based permission matrix.
 
 An `Environment` can read and modify sensors but should only read actuators from its input state. A `Controller` can read and modify actuators but should only read sensors from its input state.
 
@@ -215,7 +215,7 @@ Hardware tests will conduct real-world validation using actual thermal managemen
 
 **Runner Architecture**: Runner provides autonomous execution management with TimeSource abstraction enabling both real-time and accelerated testing. StandardRunner respects process timing for production operation, FastRunner accelerates time for rapid testing validation.
 
-**Permission Enforcement**: Runtime validation prevents Controllers from modifying sensors while allowing Environment access to all devices. Call stack inspection identifies the modifying process and validates against domain rules, preventing thermal management violations during execution.
+**Permission Enforcement**: Runtime validation prevents Controllers from modifying sensors and prevents Environments from modifying actuators. Call stack inspection identifies the modifying process and validates against domain rules, preventing thermal management violations during execution.
 
 **Immutable Data Flow**: State objects are immutable with copy-on-write semantics, ensuring safe data flow through process pipelines while preventing accidental modification that could corrupt thermal control calculations.
 
