@@ -52,16 +52,29 @@ class TestDevicePermissions:
         assert "actual" in result_states
         assert result_states["actual"].has_device("cpu_temp")
 
-    def test_environment_can_modify_actuator(self) -> None:
-        """Test that Environment can modify actuators."""
-        env = MockEnvironment(name="test_env")
-        actuator = Actuator(name="cpu_fan", properties={"value": 128})
+    def test_environment_cannot_modify_actuator(self) -> None:
+        """Test that Environment cannot modify actuators."""
         state = State()
 
-        # This should work - Environment can modify actuators
-        # (called from execute context)
-        result_states = env.execute({"actual": state.with_device(actuator)})
-        assert "actual" in result_states
+        # This should fail - Environment cannot modify actuators
+        # We need a test environment that tries to modify an actuator
+        class ActuatorModifyingEnvironment(MockEnvironment):
+            def _execute(self, states: dict[str, State]) -> dict[str, State]:
+                if "actual" in states:
+                    actuator = Actuator(
+                        name="cpu_fan", properties={"value": 200}
+                    )
+                    states["actual"] = states["actual"].with_device(actuator)
+                return states
+
+        env = ActuatorModifyingEnvironment(name="test_env")
+        with pytest.raises(
+            PermissionError,
+            match=(
+                "ActuatorModifyingEnvironment cannot modify Actuator 'cpu_fan'"
+            ),
+        ):
+            env.execute({"actual": state})
 
     def test_controller_cannot_modify_sensor(self) -> None:
         """Test that Controller cannot modify sensors."""
@@ -84,6 +97,38 @@ class TestDevicePermissions:
         result_states = controller.execute({"actual": state})
         assert "actual" in result_states
         assert result_states["actual"].has_device("cpu_fan")
+
+    def test_environment_can_read_actuator_from_input(self) -> None:
+        """Test that Environment can read actuators from input state."""
+        # Create state with actuator (outside process context)
+        actuator = Actuator(name="cpu_fan", properties={"value": 128})
+        state = State().with_device(actuator)
+
+        # Environment that reads actuator and uses its value
+        class ActuatorReadingEnvironment(MockEnvironment):
+            def _execute(self, states: dict[str, State]) -> dict[str, State]:
+                if "actual" in states:
+                    # Read actuator value from input state
+                    fan_actuator = states["actual"].get_device("cpu_fan")
+                    if fan_actuator and isinstance(fan_actuator, Actuator):
+                        # Use the actuator value to update a sensor
+                        # (simulating reading back the actual fan speed)
+                        fan_speed = fan_actuator.properties.get("value", 0)
+                        sensor = Sensor(
+                            name="cpu_fan_rpm",
+                            properties={"value": fan_speed * 10},
+                        )
+                        states["actual"] = states["actual"].with_device(sensor)
+                return states
+
+        env = ActuatorReadingEnvironment(name="test_env")
+        result_states = env.execute({"actual": state})
+
+        # Environment should be able to read actuator and create sensor
+        assert "actual" in result_states
+        assert result_states["actual"].has_device("cpu_fan_rpm")
+        fan_sensor = result_states["actual"].get_device("cpu_fan_rpm")
+        assert fan_sensor.properties["value"] == 1280  # 128 * 10
 
     def test_pid_controller_inherits_permissions(self) -> None:
         """Test that PIDController inherits Controller permissions."""

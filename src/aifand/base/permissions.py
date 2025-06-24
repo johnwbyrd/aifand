@@ -2,9 +2,9 @@
 
 This module enforces critical separation of concerns in thermal
 management systems:
-- Environment processes read sensors and may update sensor readings from
-  hardware
-- Controller processes read sensors but can only modify actuators
+- Environment processes read hardware and update sensor readings, but
+  cannot modify actuators (only read them from input state)
+- Controller processes read sensors and can only modify actuators
   (decision-making)
 - No process should corrupt sensor readings from other processes
 
@@ -52,7 +52,8 @@ def register_permissions() -> None:
     DEVICE_PERMISSIONS = [
         # More specific rules first - these override general rules
         ((Environment, Sensor), True),
-        ((Environment, Actuator), True),
+        # Environments cannot modify actuators - they only read them
+        ((Environment, Actuator), False),
         ((Controller, Actuator), True),
         # Controllers cannot modify Sensors - explicitly denied
         ((Controller, Sensor), False),
