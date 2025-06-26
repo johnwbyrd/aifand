@@ -26,15 +26,37 @@ A `State` represents a snapshot of device properties at a specific moment, imple
 
 ### Process
 
-The `Process` class represents computational units that transform thermal management data. Process provides a template method `execute()` that calls the abstract `_execute()` method and automatically updates execution count. Subclasses implement `_execute()` to define their transformation logic. Process is a pure execution unit with no persistent state storage and no children.
+The `Process` class represents computational units that transform thermal management data. Process provides a template method `execute()` that calls `_execute()` and automatically updates execution count. The default `_execute()` implementation uses a three-method pattern: `_import_state()`, `_think()`, and `_export_state()`, enabling both stateless and stateful process implementations through selective method overriding.
+
+Process execution follows the pattern: input states → `_import_state()` → `_think()` → `_export_state()` → output states. Stateless processes override only `_think()` for computation. Stateful processes override `_import_state()` to update internal memory and `_think()` to use historical data. Advanced processes override all three methods for custom data format conversion (State ↔ numpy/tensorflow).
 
 Process includes timing infrastructure with `interval_ns` field for execution intervals, `start_time` for timing loop initialization, `execution_count` for tracking completed cycles, and `get_next_execution_time()` method for calculating when next execution should occur using modulo timing. The timing system uses nanosecond precision with `get_time()` method that automatically uses runner-provided time sources when available, falling back to `time.monotonic_ns()`.
 
-Process execution characteristics include immutable data flow where input states are never modified, error resilience where exceptions are caught and logged without aborting thermal control, and per-process logging with hierarchical logger names.
+Process execution characteristics include immutable data flow where input states are never modified, error resilience where exceptions are caught and logged without aborting thermal control, per-process logging with hierarchical logger names, and progressive complexity through the three-method pattern.
 
 Device modification permissions enforce thermal management domain rules through runtime validation. Environment processes can read and modify Sensors but can only read Actuators from their input state (hardware interface responsibility), while Controller processes can only modify Actuators but can only read Sensors from their input state (decision-making responsibility). This separation prevents Controllers from corrupting sensor readings and prevents Environments from bypassing controller decisions. Permission checking uses call stack inspection to identify the modifying process and validates against a class-based permission matrix.
 
 An `Environment` can read and modify sensors but should only read actuators from its input state. A `Controller` can read and modify actuators but should only read sensors from its input state.
+
+### StatefulProcess
+
+The `StatefulProcess` class extends Process to support state management between executions. StatefulProcess inherits the three-method pattern and adds runtime state management capabilities for processes that need memory, learning, or historical data analysis.
+
+StatefulProcess separates configuration (pydantic fields) from runtime state (instance attributes). Configuration includes settings like PID gains, device names, and algorithm parameters that get serialized for persistence and network transfer. Runtime state includes Buffer contents, numpy arrays, tensorflow models, and computed values that are recreated during `initialize()`.
+
+StatefulProcess provides a foundation for thermal management algorithms requiring historical context. PID controllers use StatefulProcess with Buffer for error history and integral terms. Safety controllers use StatefulProcess for monitoring temperature trends and detecting thermal runaway. Learning controllers use StatefulProcess for training data accumulation and model state management.
+
+The key insight is that StatefulProcess maintains algorithm-specific memory while preserving the clean State-based interface for inter-process communication. Internal memory serves computational needs while States provide standardized data exchange across the thermal management pipeline.
+
+### Buffer
+
+The `Buffer` class provides timestamped state storage for StatefulProcess implementations. Buffer maintains chronologically ordered States with nanosecond timestamps, supporting time-based queries, automatic aging, and efficient access patterns for thermal control algorithms.
+
+Buffer operations include `store(timestamp, states)` for adding new data, `get_recent(duration_ns)` for sliding window access, `get_range(start_ns, end_ns)` for arbitrary time ranges, and `prune_before(timestamp)` for memory management. Buffer implementations can use circular buffers, linked lists, or database storage depending on performance and persistence requirements.
+
+Buffer abstracts timing complexity from thermal algorithms. PID controllers query Buffer for derivative calculations without managing timestamps. Safety controllers monitor Buffer for temperature spike detection without implementing time-series logic. Learning controllers access Buffer for training data without managing data lifecycle.
+
+Buffer provides the temporal foundation that enables sophisticated thermal management while keeping controller implementations focused on their domain logic rather than data structure management.
 
 ### Collection
 
@@ -80,21 +102,99 @@ Runner integration enables autonomous thermal management operation through `Stan
 
 ## Concrete Implementations
 
-The following implementations exist as skeleton classes requiring completion:
+The following implementations demonstrate the three-method pattern across different complexity levels:
+
+### Stateless Controllers
+
+**FixedSpeedController** demonstrates the simplest pattern, overriding only `_think()` to apply fixed actuator values:
+
+```python
+class FixedSpeedController(Controller):
+    actuator_settings: dict[str, float] = Field(default_factory=dict)
+    
+    def _think(self, states: dict[str, State]) -> dict[str, State]:
+        # Apply fixed values directly to actuators
+        return updated_states
+```
+
+### Stateful Controllers  
+
+**PIDController** demonstrates StatefulProcess with Buffer for historical error tracking:
+
+```python
+class PIDController(StatefulProcess, Controller):
+    kp: float = Field(default=1.0)  # Configuration
+    
+    def _import_state(self, states: dict[str, State]) -> None:
+        # Store current error in Buffer
+        self.buffer.store(self.get_time(), states)
+    
+    def _think(self, states: dict[str, State]) -> dict[str, State]:
+        # PID calculation using Buffer history
+        return pid_result_states
+```
+
+**SafetyController** demonstrates rapid monitoring using StatefulProcess:
+
+```python
+class SafetyController(StatefulProcess, Controller):
+    def _import_state(self, states: dict[str, State]) -> None:
+        # Monitor temperature trends
+        self.buffer.store(self.get_time(), states)
+    
+    def _think(self, states: dict[str, State]) -> dict[str, State]:
+        # Detect thermal runaway from Buffer trends
+        return emergency_actions if thermal_runaway else states
+```
+
+### Advanced AI Controllers
+
+**LearningController** demonstrates custom format conversion for machine learning:
+
+```python
+class EchoStateNetworkController(Controller):
+    def _import_state(self, states: dict[str, State]) -> None:
+        # Convert States to TensorFlow tensors
+        tensor_data = self._states_to_tensor(states)
+        self.tensor_memory.append(tensor_data)
+    
+    def _think(self, states: dict[str, State]) -> tf.Tensor:
+        # Echo State Network computation
+        return self.esn_model.predict(self.tensor_memory.recent())
+    
+    def _export_state(self, result: tf.Tensor, original: dict[str, State]) -> dict[str, State]:
+        # Convert tensor predictions back to actuator States
+        return self._tensor_to_states(result, original)
+```
 
 ### Environments
 
-The `Hardware` environment will interface with physical hardware through the Linux hwmon filesystem, discovering available sensors and actuators and implementing read/apply methods for real-world interaction.
+**Hardware** environment interfaces with physical hardware through format conversion:
 
-The `Simulation` environment will create virtual thermal models for controller testing, including linear thermal models, thermal mass simulation, realistic system models, unstable system models, failure simulation, and chaotic system models.
+```python
+class Hardware(Environment):
+    def _import_state(self, states: dict[str, State]) -> None:
+        # Read hwmon filesystem into internal format
+        
+    def _think(self, states: dict[str, State]) -> dict[str, State]:
+        # Apply actuator commands to hardware
+        
+    def _export_state(self, result, original: dict[str, State]) -> dict[str, State]:
+        # Convert hardware readings back to sensor States
+```
 
-### Controllers
+**Simulation** environment creates virtual thermal models for testing:
 
-The `SafetyController` will implement fail-safe logic, monitoring actual state against critical thresholds and overriding other controllers when triggered.
-
-The `PIDController` will implement standard Proportional-Integral-Derivative control with anti-windup and derivative filtering.
-
-The `LearningController` will use Echo State Networks to learn thermal relationships and optimize for multiple objectives.
+```python
+class LinearThermalSimulation(StatefulProcess, Environment):
+    def _import_state(self, states: dict[str, State]) -> None:
+        # Update thermal simulation state
+        self.buffer.store(self.get_time(), states)
+    
+    def _think(self, states: dict[str, State]) -> dict[str, State]:
+        # Run thermal physics simulation
+        return simulated_sensor_states
+```
 
 ## Class Hierarchy
 
@@ -118,11 +218,24 @@ classDiagram
         <<Abstract>>
         +execute(states) Dict[str, State]
         +_execute(states) Dict[str, State]*
+        +_import_state(states) None
+        +_think(states) Dict[str, State]
+        +_export_state(result, original) Dict[str, State]
         +interval_ns: int
         +get_next_execution_time() int
         +get_time() int
         +initialize() None
         +update_execution_count() None
+    }
+    class StatefulProcess {
+        +buffer: Buffer
+        +initialize() None
+    }
+    class Buffer {
+        +store(timestamp, states) None
+        +get_recent(duration_ns) List
+        +get_range(start_ns, end_ns) List
+        +prune_before(timestamp) int
     }
     class Collection {
         <<Abstract>>
@@ -162,6 +275,7 @@ classDiagram
     Entity <|-- Runner
     Device <|-- Sensor
     Device <|-- Actuator
+    Process <|-- StatefulProcess
     Process <|-- Collection
     Process <|-- Controller
     Process <|-- Environment
@@ -173,9 +287,11 @@ classDiagram
     Pipeline o-- "*" Process : children
     System o-- "*" Process : process_heap
     Runner o-- "1" Process : main_process
+    StatefulProcess o-- "1" Buffer : buffer
     Environment o-- "*" Device : contains
     Controller ..> State : operates on
     Environment ..> State : produces/consumes
+    Buffer ..> State : stores
     TimeSource ..> Runner : manages
 ```
 
@@ -195,7 +311,11 @@ Protocol implementations will include gRPC for high-frequency sensor data stream
 
 ## Serialization Strategy
 
-The architecture uses pydantic models as the single source of truth for all data structures, ensuring consistency across protocols and eliminating schema drift. Thermal entities are defined once as pydantic models and exposed across multiple protocols with automatic stub generation and full type checking across network boundaries.
+The architecture separates configuration from runtime state for clean serialization. Pydantic fields contain configuration (PID gains, device names, algorithm parameters) that gets serialized for persistence and network transfer. Runtime state (Buffer contents, numpy arrays, tensorflow models) exists as instance attributes that are not serialized.
+
+Configuration serialization enables system persistence through JSON files, configuration management through REST APIs, and distributed deployment through network protocols. Runtime state gets recreated during `initialize()` based on configuration, ensuring clean startup without complex serialization of temporal data or ML model states.
+
+The architecture uses pydantic models as the single source of truth for configuration data structures, ensuring consistency across protocols and eliminating schema drift. Thermal entities are defined once as pydantic models and exposed across multiple protocols with automatic stub generation and full type checking across network boundaries.
 
 ## Testing Strategy
 
@@ -206,6 +326,8 @@ FastRunner enables rapid testing of long-term thermal behavior and complex timin
 Hardware tests will conduct real-world validation using actual thermal management hardware. Protocol tests will verify multi-protocol serialization and network communication. The simulation environments will enable testing controller stability against both reasonable thermal models and deliberately pathological edge cases.
 
 ## Implementation Decisions
+
+**Three-Method Pattern**: Process execution follows the pattern `_import_state()` → `_think()` → `_export_state()` with pass-through defaults in the base class. This enables progressive complexity: stateless processes override only `_think()`, stateful processes add `_import_state()` for memory management, advanced processes override all three for format conversion. The pattern avoids forced abstractions while supporting everything from simple fixed controllers to sophisticated AI algorithms.
 
 **Process Simplicity**: The base Process class provides only execution capability (`execute()`) and timing infrastructure (`get_next_execution_time()`). No children, no persistent state, no complex coordination. This separation enables both simple transformations (Controllers, Environments) and complex coordination (Pipeline, System) through composition.
 
@@ -218,5 +340,9 @@ Hardware tests will conduct real-world validation using actual thermal managemen
 **Permission Enforcement**: Runtime validation prevents Controllers from modifying sensors and prevents Environments from modifying actuators. Call stack inspection identifies the modifying process and validates against domain rules, preventing thermal management violations during execution.
 
 **Immutable Data Flow**: State objects are immutable with copy-on-write semantics, ensuring safe data flow through process pipelines while preventing accidental modification that could corrupt thermal control calculations.
+
+**StatefulProcess Separation**: StatefulProcess extends Process for algorithms requiring memory while maintaining clean State-based interfaces. Configuration (pydantic fields) separates from runtime state (instance attributes), enabling serialization of settings while runtime state gets recreated during `initialize()`. This separation supports system persistence and network protocols without complex serialization of numpy arrays or tensorflow models.
+
+**Buffer Simplicity**: Buffer provides timestamped state storage without complex memory abstraction hierarchies. Single Buffer class supports circular buffering, sliding windows, and time-based queries through simple interface methods. This avoids over-engineering while providing temporal foundation for PID controllers, safety monitoring, and learning algorithms.
 
 **Thread-Local Time Sources**: TimeSource uses thread-local storage to provide time sources to processes, enabling different runners to operate independently in different threads while maintaining consistent timing behavior within each execution context.

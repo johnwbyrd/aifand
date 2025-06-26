@@ -2,47 +2,68 @@
 
 ## Overview
 
-This document outlines the remaining implementation tasks for `aifand` following the completion of the base architecture refactoring and initial testing.
+This document outlines the remaining implementation tasks for `aifand` following the completion of the base architecture and three-method pattern implementation.
 
 ---
 
-## Test Architecture Improvements (Phase 1 - Current)
+## Core Pattern Implementation (Phase 1 - Current)
 
 ### Objective
-Fix timing inconsistencies in tests and create comprehensive stress testing for the base architecture timing coordination.
-
-### Remaining Tasks
-
-1. **Permission System Integration Testing** (tests/unit/base/test_permissions.py - enhancement):
-   - **Real Pipeline Permission Flow**: Test Controllers and Environments in actual Pipeline execution
-   - **Hierarchical Permission Validation**: Test permissions through System → Pipeline → Process chains
-   - **Runtime Permission Edge Cases**: Permission checking under concurrent execution
-   - **Permission Error Recovery**: System resilience when permission violations occur
-
----
-
-## Basic Controllers (Phase 2)
-
-### Objective
-Implement fundamental controllers to enable meaningful thermal management testing and provide concrete implementations for Pipeline and System coordination testing.
+Implement the three-method pattern in Process base class and create first concrete controller demonstrating stateless pattern.
 
 ### Tasks
-1. **Implement FixedSpeedController** (src/aifand/controllers/fixed.py):
-   - Static actuator control for initial testing and baseline scenarios
-   - Simple state transformation: set actuator values to fixed configuration
-   - Configuration management for different fixed operating points
+
+1. **Implement Three-Method Pattern** (src/aifand/base/process.py):
+   - Add default `_execute()` implementing: `_import_state()` → `_think()` → `_export_state()`
+   - All three methods default to pass-through behavior
+   - Maintain backward compatibility for existing `_execute()` overrides
+
+2. **Implement StatefulProcess** (src/aifand/base/stateful.py):
+   - Extend Process with state management capabilities
+   - Separate configuration (pydantic fields) from runtime state (instance attributes)
+   - Override `initialize()` to set up runtime state from configuration
+
+3. **Implement Buffer** (src/aifand/base/buffer.py):
+   - Timestamped state storage with nanosecond precision
+   - Methods: `store()`, `get_recent()`, `get_range()`, `prune_before()`
+   - Efficient circular buffer implementation for memory management
+
+4. **Implement FixedSpeedController** (src/aifand/controllers/fixed.py):
+   - Demonstrate stateless pattern (override only `_think()`)
+   - Apply fixed actuator values from configuration
+   - Validate first concrete example of three-method pattern
+
+5. **Enhanced Permission Testing** (tests/unit/base/test_permissions.py):
+   - Real Pipeline permission flow with FixedSpeedController
+   - Hierarchical permission validation through System → Pipeline → Process
+   - Integration testing with concrete controller implementations
+
+---
+
+## Stateful Controllers (Phase 2)
+
+### Objective
+Implement StatefulProcess-based controllers demonstrating memory usage and Buffer integration for historical data analysis.
+
+### Tasks
+
+1. **Implement PIDController** (src/aifand/controllers/pid.py):
+   - Demonstrate StatefulProcess + Buffer pattern
+   - Use `_import_state()` to store error history in Buffer
+   - Use `_think()` for PID calculations with historical data
+   - Configurable gains (Kp, Ki, Kd) and anti-windup logic
 
 2. **Implement SafetyController** (src/aifand/controllers/safety.py):
-   - Fail-safe logic with critical threshold monitoring
-   - Override capability: can modify any actuator when safety limits exceeded
-   - Priority execution: should execute last in controller pipelines
-   - Emergency shutdown logic for thermal runaway scenarios
+   - Demonstrate rapid monitoring with StatefulProcess
+   - Use Buffer for temperature trend analysis
+   - Detect thermal runaway and emergency conditions
+   - Override capability for critical thermal protection
 
-3. **Controller Integration Testing**:
-   - Pipeline execution with Environment → Controllers flow
-   - State transformation validation through controller pipelines
-   - Permission system verification with actual controller implementations
-   - Error handling and resilience testing with real controller logic
+3. **Stateful Controller Testing**:
+   - Buffer integration and memory management validation
+   - Timing-dependent behavior testing with FastRunner
+   - State persistence and initialization testing
+   - Performance validation under different Buffer sizes
 
 ---
 
@@ -52,47 +73,52 @@ Implement fundamental controllers to enable meaningful thermal management testin
 Implement simulation environments for testing controllers under controlled and adversarial conditions without requiring physical hardware.
 
 ### Tasks
-1. **Implement Basic Simulation Environments** (src/aifand/environments/simulation.py):
-   - **LinearThermal**: Simple linear heat transfer model for basic testing
-   - **ThermalMass**: Multi-zone model with thermal inertia and realistic time delays
-   - **RealisticSystem**: Computer thermal model with CPU load-based heat generation
 
-2. **Implement Adversarial Testing Environments**:
-   - **UnstableSystem**: Positive feedback dynamics designed to induce thermal runaway
-   - **ChaosSystem**: Non-linear, chaotic thermal behavior with sudden discontinuities
-   - **FailureSimulation**: Random sensor dropouts, actuator failures, hardware malfunctions
+1. **Implement Basic Simulation Environments** (src/aifand/environments/simulation.py):
+   - **LinearThermalSimulation**: StatefulProcess + Buffer for thermal state
+   - **ThermalMassSimulation**: Multi-zone model with thermal inertia 
+   - **RealisticSystemSimulation**: Computer thermal model with load-based heat generation
+   - Demonstrate Environment three-method pattern with physics simulation
+
+2. **Implement Advanced Testing Environments**:
+   - **UnstableSystemSimulation**: Positive feedback dynamics for runaway testing
+   - **ChaosSystemSimulation**: Non-linear, chaotic thermal behavior
+   - **FailureSimulation**: Random sensor dropouts and actuator failures
+   - Use custom format conversion for efficient numerical simulation
 
 3. **Simulation Integration**:
    - Environment → Controller pipelines with realistic thermal dynamics
-   - FastRunner integration for rapid simulation of long-term thermal behavior
-   - Controller stability validation against pathological thermal conditions
-   - Quantitative stability metrics: overshoot, settling time, oscillation detection
+   - FastRunner integration for rapid long-term behavior testing
+   - Controller stability validation against pathological conditions
+   - Quantitative metrics: stability, overshoot, settling time, oscillation
 
 ---
 
-## Advanced Controllers (Phase 4)
+## AI Controllers (Phase 4)
 
 ### Objective
-Implement sophisticated control algorithms and validate them against simulation environments.
+Implement machine learning controllers demonstrating custom format conversion and advanced AI techniques.
 
 ### Tasks
-1. **Implement PIDController** (src/aifand/controllers/pid.py):
-   - Configurable PID controller with tunable parameters
-   - Multiple independent control loops support
-   - Anti-windup and derivative filtering
-   - Setpoint tracking from desired state
 
-2. **Implement LearningController** (src/aifand/controllers/learning.py):
-   - Echo State Network-based controller using reservoir computing
-   - Recursive Least Squares for online learning
-   - Multi-input, multi-output control scenarios
-   - State space exploration and adaptation
+1. **Implement EchoStateNetworkController** (src/aifand/controllers/learning.py):
+   - Demonstrate full three-method pattern with TensorFlow/numpy conversion
+   - Use `_import_state()` for State → tensor conversion and memory management
+   - Use `_think()` for Echo State Network computation in native format
+   - Use `_export_state()` for tensor → actuator State conversion
+   - Online learning with Recursive Least Squares adaptation
 
-3. **Controller Validation Framework**:
-   - Test each controller against all simulation environments
-   - Performance metrics collection: stability, efficiency, response time
-   - Failure mode identification and documentation
-   - Comparative analysis across different scenarios
+2. **Advanced AI Techniques**:
+   - **Model Predictive Controller**: Multi-step ahead prediction and optimization
+   - **Reinforcement Learning Controller**: Q-learning for thermal optimization
+   - **Adaptive Neural Controller**: Online network structure adaptation
+   - Custom memory management for each AI approach
+
+3. **AI Controller Validation**:
+   - Test against all simulation environments (stable and pathological)
+   - Learning convergence and stability analysis
+   - Performance comparison with traditional controllers
+   - Computational efficiency and real-time constraints validation
 
 ---
 
@@ -102,23 +128,25 @@ Implement sophisticated control algorithms and validate them against simulation 
 Implement direct hardware interface for real-world thermal management deployment.
 
 ### Tasks
+
 1. **Implement Hardware Environment** (src/aifand/environments/hardware.py):
-   - Direct hwmon filesystem integration (/sys/class/hwmon/)
-   - Automatic sensor and actuator discovery via filesystem enumeration
-   - Device capability detection (readable/writable, min/max values, scaling)
-   - Error handling for hardware failures, missing devices, permission issues
+   - Demonstrate Environment three-method pattern with hwmon integration
+   - Use `_import_state()` to read hwmon filesystem into internal format
+   - Use `_think()` to apply actuator commands and update sensor readings
+   - Use `_export_state()` to convert hardware data back to sensor States
+   - Automatic discovery via /sys/class/hwmon/ enumeration
 
-2. **Hardware Interface Implementation**:
-   - Robust read() with scaling, unit conversion, error recovery
-   - Safe apply() with value validation, bounds checking, write verification
+2. **Hardware Interface Robustness**:
+   - Device capability detection (readable/writable, min/max, scaling)
+   - Error handling for hardware failures and permission issues
    - Hardware-specific workarounds for quirky thermal sensors
-   - Graceful degradation when hardware becomes unavailable
+   - Graceful degradation when devices become unavailable
 
-3. **Hardware Validation Testing**:
-   - Real hardware testing with actual thermal loads
-   - Safety mechanism validation under thermal stress
-   - Controller stability with real thermal dynamics
-   - Hardware-specific calibration procedures
+3. **Real-World Validation**:
+   - Safety mechanism testing under actual thermal stress
+   - Controller stability with real hardware dynamics
+   - Performance validation with physical thermal loads
+   - Hardware-specific calibration and tuning procedures
 
 ---
 
