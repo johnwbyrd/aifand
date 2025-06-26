@@ -1,7 +1,7 @@
 """Tests for StatefulProcess class."""
 
 from src.aifand.base.device import Sensor
-from src.aifand.base.state import State
+from src.aifand.base.state import State, States
 from src.aifand.base.stateful import StatefulProcess
 
 
@@ -47,7 +47,7 @@ class TestStatefulProcess:
         # Create test state
         sensor = Sensor(name="temp", properties={"value": 25.0})
         state = State(devices={"temp": sensor})
-        states = {"actual": state}
+        states = States({"actual": state})
 
         # Import state should store in buffer
         process._import_state(states)
@@ -74,7 +74,7 @@ class TestStatefulProcess:
 
         # Add more entries than limit
         for _ in range(5):
-            states = {"actual": State()}
+            states = States({"actual": State()})
             process._import_state(states)
 
         # Should be pruned to limit
@@ -98,11 +98,11 @@ class TestStatefulProcess:
 
         # Store old entry
         process.mock_time = 500
-        process._import_state({"actual": State()})
+        process._import_state(States({"actual": State()}))
 
         # Store new entry that should trigger pruning
         process.mock_time = 2000  # Now old entry is 1500ns old
-        process._import_state({"actual": State()})
+        process._import_state(States({"actual": State()}))
 
         # Old entry should be pruned (older than 1000ns)
         assert process.buffer.count() == 1
@@ -117,9 +117,9 @@ class TestStatefulProcess:
                 super().__init__(name=name)
                 self.buffer_used = False
                 self.history_count = 0
-                self._controller_states: dict[str, State] | None = None
+                self._controller_states: States | None = None
 
-            def _import_state(self, states: dict[str, State]) -> None:
+            def _import_state(self, states: States) -> None:
                 super()._import_state(states)  # Update Buffer
                 self._controller_states = states
 
@@ -133,15 +133,15 @@ class TestStatefulProcess:
                 else:
                     self.history_count = 0
 
-            def _export_state(self) -> dict[str, State]:
-                return self._controller_states or {}
+            def _export_state(self) -> States:
+                return self._controller_states or States()
 
         controller = TestController(name="test_controller")
 
         # Execute with states
         sensor = Sensor(name="temp", properties={"value": 25.0})
         state = State(devices={"temp": sensor})
-        input_states = {"actual": state}
+        input_states = States({"actual": state})
 
         result = controller.execute(input_states)
 
@@ -171,7 +171,7 @@ class TestStatefulProcess:
         assert summary["is_empty"] is True
 
         # After adding entries
-        process._import_state({"actual": State()})
+        process._import_state(States({"actual": State()}))
         summary = process.get_buffer_summary()
         assert summary["entry_count"] == 1
         assert summary["is_empty"] is False
@@ -205,7 +205,7 @@ class TestStatefulProcess:
         process.initialize()
 
         # Add some runtime state
-        process._import_state({"actual": State()})
+        process._import_state(States({"actual": State()}))
 
         # Serialize - should only include configuration
         data = process.model_dump()

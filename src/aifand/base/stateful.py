@@ -6,7 +6,7 @@ from pydantic import Field
 
 from .buffer import Buffer
 from .process import Process
-from .state import State
+from .state import States
 
 
 class StatefulProcess(Process):
@@ -64,7 +64,7 @@ class StatefulProcess(Process):
         # Create runtime state from configuration
         self.buffer = Buffer(name=f"{self.name}_buffer")
 
-    def _import_state(self, states: dict[str, State]) -> None:
+    def _import_state(self, states: States) -> None:
         """Store states in buffer with automatic pruning.
 
         Stateful processes can override this for custom memory

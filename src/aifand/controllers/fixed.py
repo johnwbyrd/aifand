@@ -6,7 +6,7 @@ from pydantic import Field
 
 from ..base.device import Actuator  # noqa: TID252
 from ..base.process import Controller  # noqa: TID252
-from ..base.state import State  # noqa: TID252
+from ..base.state import State, States  # noqa: TID252
 from ..base.stateful import StatefulProcess  # noqa: TID252
 
 
@@ -32,18 +32,18 @@ class FixedSpeedController(Controller, StatefulProcess):
         """Initialize FixedSpeedController with instance state vars."""
         super().__init__(**data)
         # Instance variables for three-method pattern communication
-        self._actual_states: dict[str, State] | None = None
-        self._desired_states: dict[str, State] | None = None
+        self._actual_states: States | None = None
+        self._desired_states: States | None = None
 
-    def _import_state(self, states: dict[str, State]) -> None:
+    def _import_state(self, states: States) -> None:
         """Store input states for _think() method access.
 
         Args:
             states: Dictionary of named input states
         """
         super()._import_state(states)  # Update Buffer (though unused)
-        self._actual_states = states.copy()
-        self._desired_states = states.copy()  # Start with input states
+        self._actual_states = States(states)
+        self._desired_states = States(states)  # Start with input states
 
     def _think(self) -> None:
         """Apply fixed actuator values to states.
@@ -71,10 +71,12 @@ class FixedSpeedController(Controller, StatefulProcess):
                 "desired"
             ].with_device(actuator)
 
-    def _export_state(self) -> dict[str, State]:
+    def _export_state(self) -> States:
         """Export the calculated states with desired actuator values.
 
         Returns:
             Dictionary containing desired state with actuator commands
         """
-        return self._desired_states.copy() if self._desired_states else {}
+        return (
+            States(self._desired_states) if self._desired_states else States()
+        )

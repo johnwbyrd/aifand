@@ -17,7 +17,7 @@ from typing import Any
 from pydantic import ConfigDict, Field
 
 from .entity import Entity
-from .state import State
+from .state import States
 
 
 class Process(Entity, ABC):
@@ -80,7 +80,7 @@ class Process(Entity, ABC):
             f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}"
         )
 
-    def execute(self, states: dict[str, State]) -> dict[str, State]:
+    def execute(self, states: States) -> States:
         """Execute this process, transforming the input states.
 
         Template method that calls _execute() and automatically updates
@@ -108,7 +108,7 @@ class Process(Entity, ABC):
             # The re-raise preserves original exception and stack trace
             raise
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Execute this process using three-method pattern.
 
         Default implementation calls the three-method pattern:
@@ -134,7 +134,7 @@ class Process(Entity, ABC):
         self._think()
         return self._export_state()
 
-    def _import_state(self, states: dict[str, State]) -> None:
+    def _import_state(self, states: States) -> None:
         """Import and process input states into internal representation.
 
         Default implementation does nothing (pass-through).
@@ -155,7 +155,7 @@ class Process(Entity, ABC):
         communication.
         """
 
-    def _export_state(self) -> dict[str, State]:
+    def _export_state(self) -> States:
         """Export internal representation back to standard State format.
 
         Default implementation returns empty state dictionary.
@@ -165,7 +165,7 @@ class Process(Entity, ABC):
         Returns:
             Dictionary of final output states
         """
-        return {}
+        return States()
 
     def get_time(self) -> int:
         """Get current time in nanoseconds.

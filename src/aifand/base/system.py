@@ -10,7 +10,7 @@ from pydantic import Field
 
 from .collection import Collection
 from .process import Process
-from .state import State
+from .state import States
 
 
 class System(Collection):
@@ -159,7 +159,7 @@ class System(Collection):
 
         return ready_processes
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Execute ready child processes independently.
 
         System finds children that are ready to execute based on their
@@ -181,7 +181,7 @@ class System(Collection):
         for child in ready_children:
             try:
                 # Each child manages its own states independently
-                child.execute({})
+                child.execute(States())
 
                 # After execution, re-add child to heap with updated
                 # execution time (child was already removed from heap by

@@ -10,14 +10,14 @@ from pydantic import Field
 
 from src.aifand.base.pipeline import Pipeline
 from src.aifand.base.process import Controller, Environment, Process
-from src.aifand.base.state import State
+from src.aifand.base.state import States
 from src.aifand.base.system import System
 
 
 class MockEnvironment(Environment):
     """Basic Environment mock for testing."""
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Pass states through unchanged.
 
         Default implementation for testing.
@@ -28,7 +28,7 @@ class MockEnvironment(Environment):
 class MockController(Controller):
     """Basic Controller mock for testing."""
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Pass states through unchanged.
 
         Default implementation for testing.
@@ -47,7 +47,7 @@ class CountingMixin:
         default=0, description="Counter for tracking executions"
     )
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Increment counter and call parent _execute method."""
         self.counter += 1
         # Call parent class _execute if it exists
@@ -71,7 +71,7 @@ class FailingMixin:
         description="Counter for tracking calls before failure",
     )
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Fail after specified number of executions."""
         self.fail_count += 1
 
@@ -100,12 +100,12 @@ class MockTimedPipeline(Pipeline):
         default_factory=list,
         description="Sequence numbers for executions",
     )
-    received_states_log: list[dict[str, State]] = Field(
+    received_states_log: list[States] = Field(
         default_factory=list,
         description="Log of states received during execution",
     )
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Track execution and pass states through.
 
         Called by System during execution.
@@ -128,7 +128,7 @@ class MockTimedSystem(System):
         description="History of executions with metadata",
     )
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Track execution when called by parent System."""
         timestamp = self.get_time()
         self.execution_history.append(
@@ -154,7 +154,7 @@ class MockProcess(Process):
         description="Nanosecond timestamps of executions",
     )
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Track execution with detailed logging."""
         timestamp = self.get_time()
         self.execution_timestamps.append(timestamp)

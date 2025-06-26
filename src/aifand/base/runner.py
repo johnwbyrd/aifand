@@ -10,6 +10,7 @@ from pydantic import Field
 
 from .entity import Entity
 from .process import Process
+from .state import States
 
 
 class TimeSource:
@@ -158,7 +159,7 @@ class Runner(Entity, ABC):
         handles execution count updates.
         """
         self._logger.debug("Executing %s", self.main_process.name)
-        self.main_process.execute({})
+        self.main_process.execute(States())
 
 
 class StandardRunner(Runner):

@@ -7,7 +7,7 @@ from .entity import Entity
 from .pipeline import Pipeline
 from .process import Controller, Environment, Process
 from .runner import FastRunner, Runner, StandardRunner, TimeSource
-from .state import State
+from .state import State, States
 from .stateful import StatefulProcess
 from .system import System
 
@@ -27,6 +27,7 @@ __all__ = [
     "StandardRunner",
     "State",
     "StatefulProcess",
+    "States",
     "System",
     "TimeSource",
 ]

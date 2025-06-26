@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .device import Device
+from .device import Actuator, Device, Sensor
 
 
 class State(BaseModel):
@@ -128,3 +128,36 @@ class State(BaseModel):
         """
         device_names = ", ".join(self.device_names())
         return f"State({self.device_count()} devices: {device_names})"
+
+
+class States(dict[str, State]):
+    """Collection of named states for thermal management processes.
+
+    Maps state names (like 'actual', 'desired') to State objects.
+    """
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: Any
+    ) -> Any:
+        """Provide pydantic core schema for States."""
+        # Use dict schema since States inherits from dict
+        return handler(dict[str, State])
+
+    def get_sensors(self) -> dict[str, Sensor]:
+        """Get all sensor devices across all states."""
+        return {
+            device_name: device
+            for state in self.values()
+            for device_name, device in state.devices.items()
+            if isinstance(device, Sensor)
+        }
+
+    def get_actuators(self) -> dict[str, Actuator]:
+        """Get all actuator devices across all states."""
+        return {
+            device_name: device
+            for state in self.values()
+            for device_name, device in state.devices.items()
+            if isinstance(device, Actuator)
+        }

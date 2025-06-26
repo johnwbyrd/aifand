@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import ConfigDict
 
 from .entity import Entity
-from .state import State
+from .state import States
 
 
 class Buffer(Entity):
@@ -27,9 +27,9 @@ class Buffer(Entity):
         """Initialize Buffer with internal storage."""
         super().__init__(**data)
         # Private attribute for internal storage
-        self._entries: list[tuple[int, dict[str, State]]] = []
+        self._entries: list[tuple[int, States]] = []
 
-    def store(self, timestamp: int, states: dict[str, State]) -> None:
+    def store(self, timestamp: int, states: States) -> None:
         """Store states with timestamp.
 
         States are stored in chronological order for efficient access.
@@ -41,7 +41,7 @@ class Buffer(Entity):
         """
         # Insert in chronological order (simple insertion sort for now)
         # For production, consider more efficient data structures
-        entry = (timestamp, states.copy())
+        entry = (timestamp, States(states))
 
         # Find insertion point to maintain chronological order
         insert_index = len(self._entries)
@@ -52,9 +52,7 @@ class Buffer(Entity):
 
         self._entries.insert(insert_index, entry)
 
-    def get_recent(
-        self, duration_ns: int
-    ) -> list[tuple[int, dict[str, State]]]:
+    def get_recent(self, duration_ns: int) -> list[tuple[int, States]]:
         """Get entries from the last duration_ns nanoseconds.
 
         Args:
@@ -81,7 +79,7 @@ class Buffer(Entity):
 
     def get_range(
         self, start_ns: int, end_ns: int
-    ) -> list[tuple[int, dict[str, State]]]:
+    ) -> list[tuple[int, States]]:
         """Get entries within specified time range.
 
         Args:
@@ -138,7 +136,7 @@ class Buffer(Entity):
         """Remove all entries from buffer."""
         self._entries.clear()
 
-    def get_latest(self) -> tuple[int, dict[str, State]] | None:
+    def get_latest(self) -> tuple[int, States] | None:
         """Get the most recent entry.
 
         Returns:
@@ -149,7 +147,7 @@ class Buffer(Entity):
             return None
         return self._entries[-1]
 
-    def get_oldest(self) -> tuple[int, dict[str, State]] | None:
+    def get_oldest(self) -> tuple[int, States] | None:
         """Get the oldest entry.
 
         Returns:

@@ -4,7 +4,7 @@ from pydantic import Field
 
 from .collection import Collection
 from .process import Process
-from .state import State
+from .state import States
 
 
 class Pipeline(Collection):
@@ -77,7 +77,7 @@ class Pipeline(Collection):
         for child in self.children:
             child.initialize()
 
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
+    def _execute(self, states: States) -> States:
         """Execute child processes serially.
 
         Passes states through children sequentially:
