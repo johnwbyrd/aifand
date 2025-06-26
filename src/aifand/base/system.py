@@ -110,8 +110,8 @@ class System(Collection):
     def initialize(self) -> None:
         """Initialize state for system and all children.
 
-        Propagates initialization to all child processes in
-        the priority queue to ensure the entire process tree has clean
+        Propagates initialization to all child processes in the
+        priority queue to ensure the entire process tree has clean
         state before execution.
         """
         # Initialize our own state
