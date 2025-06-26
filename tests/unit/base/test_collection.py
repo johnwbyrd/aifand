@@ -128,7 +128,7 @@ class TestCollectionProtocol:
             assert collection.count() == 2
 
     def test_collection_timing_integration(self) -> None:
-        """Test timing() propagation.
+        """Test initialize() propagation.
 
         Tests propagation correctly to all children.
         """
@@ -148,7 +148,7 @@ class TestCollectionProtocol:
             collection.append(proc2)
 
             # Initialize timing
-            collection.timing()
+            collection.initialize()
 
             # Verify timing was initialized on collection
             assert collection.start_time > 0
