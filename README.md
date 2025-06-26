@@ -8,6 +8,8 @@
 [![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 
+![aifand android image](https://github.com/user-attachments/assets/6dc35fa3-9b71-4b3e-af18-f87c91695d6d)
+
 **NOTE: This project is currently in the architectural design and development phase. It is not yet ready for deployment or production use.**
 
 ## Project Purpose and Goals
@@ -46,4 +48,3 @@ hatch run check
 
 This mirrors the same checks run in CI/CD.
 
-![aifand android image](https://github.com/user-attachments/assets/6dc35fa3-9b71-4b3e-af18-f87c91695d6d)
