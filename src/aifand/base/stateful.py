@@ -62,7 +62,7 @@ class StatefulProcess(Process):
         super().initialize()
 
         # Create runtime state from configuration
-        self.buffer = Buffer()
+        self.buffer = Buffer(name=f"{self.name}_buffer")
 
     def _import_state(self, states: dict[str, State]) -> None:
         """Store states in buffer with automatic pruning.

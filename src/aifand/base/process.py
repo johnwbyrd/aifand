@@ -131,8 +131,8 @@ class Process(Entity, ABC):
         """
         # Three-method pattern execution
         self._import_state(states)
-        result = self._think(states)
-        return self._export_state(result, states)
+        self._think()
+        return self._export_state()
 
     def _import_state(self, states: dict[str, State]) -> None:
         """Import and process input states into internal representation.
@@ -146,40 +146,26 @@ class Process(Entity, ABC):
 
         """
 
-    def _think(self, states: dict[str, State]) -> dict[str, State]:
-        """Core computation logic on transformed states.
+    def _think(self) -> None:
+        """Core computation logic using internal state.
 
-        Default implementation passes states through unchanged.
+        Default implementation does nothing (pass-through).
         All processes typically override this for their core logic.
-
-        Args:
-            states: Dictionary of named states to process
-
-        Returns:
-            Dictionary of transformed states
-
+        Reads from and writes to instance variables for state
+        communication.
         """
-        return states
 
-    def _export_state(
-        self,
-        result: dict[str, State],
-        original: dict[str, State],  # noqa: ARG002
-    ) -> dict[str, State]:
+    def _export_state(self) -> dict[str, State]:
         """Export internal representation back to standard State format.
 
-        Default implementation returns result unchanged (pass-through).
-        AI processes override this for tensor → State conversion.
-
-        Args:
-            result: Result from _think() method
-            original: Original input states for reference
+        Default implementation returns empty state dictionary.
+        Processes override this to convert internal state to external
+        format.
 
         Returns:
             Dictionary of final output states
-
         """
-        return result
+        return {}
 
     def get_time(self) -> int:
         """Get current time in nanoseconds.

@@ -1,13 +1,16 @@
 """Fixed-value controller for constant thermal output."""
 
+from typing import Any
+
 from pydantic import Field
 
 from ..base.device import Actuator  # noqa: TID252
 from ..base.process import Controller  # noqa: TID252
 from ..base.state import State  # noqa: TID252
+from ..base.stateful import StatefulProcess  # noqa: TID252
 
 
-class FixedSpeedController(Controller):
+class FixedSpeedController(Controller, StatefulProcess):
     """Controller that applies fixed values to actuators.
 
     FixedSpeedController demonstrates the simplest three-method pattern
@@ -25,36 +28,53 @@ class FixedSpeedController(Controller):
         description="Dictionary mapping actuator names to fixed values",
     )
 
-    def _think(self, states: dict[str, State]) -> dict[str, State]:
+    def __init__(self, **data: Any) -> None:
+        """Initialize FixedSpeedController with instance state vars."""
+        super().__init__(**data)
+        # Instance variables for three-method pattern communication
+        self._actual_states: dict[str, State] | None = None
+        self._desired_states: dict[str, State] | None = None
+
+    def _import_state(self, states: dict[str, State]) -> None:
+        """Store input states for _think() method access.
+
+        Args:
+            states: Dictionary of named input states
+        """
+        super()._import_state(states)  # Update Buffer (though unused)
+        self._actual_states = states.copy()
+        self._desired_states = states.copy()  # Start with input states
+
+    def _think(self) -> None:
         """Apply fixed actuator values to states.
 
         Demonstrates stateless pattern by overriding only _think().
         Creates or updates actuators with fixed values from
-        configuration.
-
-        Args:
-            states: Input states dictionary
-
-        Returns:
-            States with actuators set to fixed values
-
+        configuration and stores them in desired state.
         """
-        result_states = dict(states)
+        if not self._actual_states or not self._desired_states:
+            return
 
-        # Apply fixed settings to actuators
+        # Apply fixed settings to actuators in desired state
         for actuator_name, fixed_value in self.actuator_settings.items():
-            # Create or update actuator with fixed value
+            # Create actuator with fixed value
             actuator = Actuator(
                 name=actuator_name,
                 properties={"value": fixed_value},
             )
 
-            # Add actuator to actual state (create if doesn't exist)
-            if "actual" not in result_states:
-                result_states["actual"] = State()
+            # Add actuator to desired state (create if doesn't exist)
+            if "desired" not in self._desired_states:
+                self._desired_states["desired"] = State()
 
-            result_states["actual"] = result_states["actual"].with_device(
-                actuator
-            )
+            self._desired_states["desired"] = self._desired_states[
+                "desired"
+            ].with_device(actuator)
 
-        return result_states
+    def _export_state(self) -> dict[str, State]:
+        """Export the calculated states with desired actuator values.
+
+        Returns:
+            Dictionary containing desired state with actuator commands
+        """
+        return self._desired_states.copy() if self._desired_states else {}
