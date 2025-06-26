@@ -45,3 +45,5 @@ hatch run check
 ```
 
 This mirrors the same checks run in CI/CD.
+
+![aifand android image](https://github.com/user-attachments/assets/6dc35fa3-9b71-4b3e-af18-f87c91695d6d)
