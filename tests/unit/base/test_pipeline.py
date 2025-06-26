@@ -2,9 +2,7 @@
 
 import pytest
 
-from src.aifand.base.device import Sensor
-from src.aifand.base.pipeline import Pipeline
-from src.aifand.base.state import State
+from aifand import Pipeline, Sensor, State
 
 from .mocks import CountingMixin, FailingMixin, MockProcess
 

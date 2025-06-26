@@ -1,7 +1,6 @@
 """Tests for System parallel coordination."""
 
-from src.aifand.base.state import State
-from src.aifand.base.system import System
+from aifand import State, System
 
 from .mocks import MockProcess, MockTimedPipeline
 
@@ -168,7 +167,7 @@ class TestSystemParallelCoordination:
 
         Test during execution.
         """
-        from src.aifand.base.runner import FastRunner
+        from aifand import FastRunner
 
         system = System(name="test_system")
 

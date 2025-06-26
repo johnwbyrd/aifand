@@ -8,9 +8,9 @@ from typing import Any
 
 from pydantic import Field
 
-from .entity import Entity
-from .process import Process
-from .state import States
+from aifand.base.entity import Entity
+from aifand.base.process import Process
+from aifand.base.state import States
 
 
 class TimeSource:

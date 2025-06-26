@@ -1,8 +1,6 @@
 """Tests for FixedSpeedController."""
 
-from src.aifand.base.device import Actuator, Sensor
-from src.aifand.base.state import State
-from src.aifand.controllers.fixed import FixedSpeedController
+from aifand import Actuator, FixedSpeedController, Sensor, State
 
 
 class TestFixedSpeedController:

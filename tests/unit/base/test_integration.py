@@ -2,10 +2,7 @@
 
 import pytest
 
-from src.aifand.base.pipeline import Pipeline
-from src.aifand.base.runner import FastRunner
-from src.aifand.base.state import State
-from src.aifand.base.system import System
+from aifand import FastRunner, Pipeline, State, System
 
 from .mocks import MockProcess, MockTimedPipeline, MockTimedSystem
 
@@ -191,7 +188,7 @@ class TestMultiRateCoordination:
 
     def test_state_flow_validation_hierarchical(self) -> None:
         """Test System properly isolates child state management."""
-        from src.aifand.base.device import Sensor
+        from aifand import Sensor
 
         # Create state-modifying processes that track what states they
         # receive

@@ -1,8 +1,6 @@
 """Tests for StatefulProcess class."""
 
-from src.aifand.base.device import Sensor
-from src.aifand.base.state import State, States
-from src.aifand.base.stateful import StatefulProcess
+from aifand import Sensor, State, StatefulProcess, States
 
 
 class TestStatefulProcess:

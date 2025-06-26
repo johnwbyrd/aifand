@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic import ConfigDict
 
-from .entity import Entity
-from .state import States
+from aifand.base.entity import Entity
+from aifand.base.state import States
 
 
 class Buffer(Entity):

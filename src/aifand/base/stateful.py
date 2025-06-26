@@ -4,9 +4,9 @@ from typing import Any
 
 from pydantic import Field
 
-from .buffer import Buffer
-from .process import Process
-from .state import States
+from aifand.base.buffer import Buffer
+from aifand.base.process import Process
+from aifand.base.state import States
 
 
 class StatefulProcess(Process):

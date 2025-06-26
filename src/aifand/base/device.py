@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import Field
 
-from .entity import Entity
+from aifand.base.entity import Entity
 
 
 class Device(Entity):

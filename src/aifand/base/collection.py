@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from .process import Process
+from aifand.base.process import Process
 
 
 class Collection(Process, ABC):

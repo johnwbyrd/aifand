@@ -3,8 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from src.aifand.base.device import Actuator, Sensor
-from src.aifand.base.state import State
+from aifand import Actuator, Sensor, State
 
 
 class TestState:

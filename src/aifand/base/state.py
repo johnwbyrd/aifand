@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .device import Actuator, Device, Sensor
+from aifand.base.device import Actuator, Device, Sensor
 
 
 class State(BaseModel):
@@ -55,7 +55,7 @@ class State(BaseModel):
     def with_device(self, device: Device) -> "State":
         """Return a new State with the given device added or updated."""
         # Check permission for this specific device before adding it
-        from .permissions import can_process_modify_device
+        from aifand.base.permissions import can_process_modify_device
 
         modifying_process = self._find_calling_process()
         if modifying_process and not can_process_modify_device(
@@ -82,7 +82,7 @@ class State(BaseModel):
 
         """
         # Check permission for each device before adding it
-        from .permissions import can_process_modify_device
+        from aifand.base.permissions import can_process_modify_device
 
         modifying_process = self._find_calling_process()
         if modifying_process:
@@ -115,7 +115,7 @@ class State(BaseModel):
                 and hasattr(frame_locals["self"], "__class__")
             ):
                 # Check if it's actually a Process instance
-                from .process import Process
+                from aifand.base.process import Process
 
                 if isinstance(frame_locals["self"], Process):
                     return frame_locals["self"]

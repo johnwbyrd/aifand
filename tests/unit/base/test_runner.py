@@ -5,12 +5,7 @@ import time
 
 import pytest
 
-from src.aifand.base.pipeline import Pipeline
-from src.aifand.base.runner import (
-    FastRunner,
-    StandardRunner,
-    TimeSource,
-)
+from aifand import FastRunner, Pipeline, StandardRunner, TimeSource
 
 from .mocks import MockProcess, MockTimedPipeline
 

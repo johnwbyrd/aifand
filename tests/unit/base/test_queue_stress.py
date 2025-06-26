@@ -6,8 +6,7 @@ focus on correctness and performance under load without assuming
 specific queue implementation.
 """
 
-from src.aifand.base.runner import FastRunner
-from src.aifand.base.system import System
+from aifand import FastRunner, System
 
 from .mocks import MockTimedPipeline
 

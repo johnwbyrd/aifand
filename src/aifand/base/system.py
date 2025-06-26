@@ -8,9 +8,9 @@ import heapq
 
 from pydantic import Field
 
-from .collection import Collection
-from .process import Process
-from .state import States
+from aifand.base.collection import Collection
+from aifand.base.process import Process
+from aifand.base.state import States
 
 
 class System(Collection):

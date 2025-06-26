@@ -4,10 +4,7 @@ from typing import Any
 
 from pydantic import Field
 
-from ..base.device import Actuator  # noqa: TID252
-from ..base.process import Controller  # noqa: TID252
-from ..base.state import State, States  # noqa: TID252
-from ..base.stateful import StatefulProcess  # noqa: TID252
+from aifand import Actuator, Controller, State, StatefulProcess, States
 
 
 class FixedSpeedController(Controller, StatefulProcess):

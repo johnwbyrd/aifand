@@ -1,15 +1,16 @@
 """Base classes for the aifand thermal management system."""
 
-from .buffer import Buffer
-from .collection import Collection
-from .device import Actuator, Device, Sensor
-from .entity import Entity
-from .pipeline import Pipeline
-from .process import Controller, Environment, Process
-from .runner import FastRunner, Runner, StandardRunner, TimeSource
-from .state import State, States
-from .stateful import StatefulProcess
-from .system import System
+from aifand.base.buffer import Buffer
+from aifand.base.collection import Collection
+from aifand.base.device import Actuator, Device, Sensor
+from aifand.base.entity import Entity
+from aifand.base.permissions import can_process_modify_device
+from aifand.base.pipeline import Pipeline
+from aifand.base.process import Controller, Environment, Process
+from aifand.base.runner import FastRunner, Runner, StandardRunner, TimeSource
+from aifand.base.state import State, States
+from aifand.base.stateful import StatefulProcess
+from aifand.base.system import System
 
 __all__ = [
     "Actuator",
@@ -30,4 +31,5 @@ __all__ = [
     "States",
     "System",
     "TimeSource",
+    "can_process_modify_device",
 ]

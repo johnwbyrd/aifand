@@ -1,8 +1,6 @@
 """Tests for Collection protocol compliance and implementations."""
 
-from src.aifand.base.collection import Collection
-from src.aifand.base.pipeline import Pipeline
-from src.aifand.base.system import System
+from aifand import Collection, Pipeline, System
 
 from .mocks import MockProcess
 

@@ -27,8 +27,8 @@ runaway or inadequate cooling.
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .device import Device
-    from .process import Process
+    from aifand.base.device import Device
+    from aifand.base.process import Process
 
 # Permission matrix: List of ((ProcessClass, DeviceClass), bool) in
 # order of precedence
@@ -43,8 +43,8 @@ def register_permissions() -> None:
     modifications by processes after all necessary imports are
     available.
     """
-    from .device import Actuator, Device, Sensor
-    from .process import Controller, Environment, Process
+    from aifand.base.device import Actuator, Device, Sensor
+    from aifand.base.process import Controller, Environment, Process
 
     # Global needed to populate module-level permission matrix after
     # imports are available (avoids circular dependency issues)

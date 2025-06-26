@@ -16,8 +16,8 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from .entity import Entity
-from .state import States
+from aifand.base.entity import Entity
+from aifand.base.state import States
 
 
 class Process(Entity, ABC):
@@ -182,7 +182,7 @@ class Process(Entity, ABC):
 
         """
         # Import here to avoid circular dependency
-        from .runner import TimeSource
+        from aifand.base.runner import TimeSource
 
         # Check for runner-provided time source
         runner = TimeSource.get_current()

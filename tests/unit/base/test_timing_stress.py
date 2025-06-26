@@ -7,8 +7,7 @@ and burst patterns. Tests focus on observable behavior rather than
 implementation details.
 """
 
-from src.aifand.base.runner import FastRunner
-from src.aifand.base.system import System
+from aifand import FastRunner, System
 
 from .mocks import MockTimedPipeline
 

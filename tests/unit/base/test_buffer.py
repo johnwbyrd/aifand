@@ -1,8 +1,6 @@
 """Tests for Buffer timestamped state storage."""
 
-from src.aifand.base.buffer import Buffer
-from src.aifand.base.device import Sensor
-from src.aifand.base.state import State
+from aifand import Buffer, Sensor, State
 
 
 class TestBuffer:

@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 import pytest
 from pydantic import ValidationError
 
-from src.aifand.base.device import Actuator, Device, Sensor
+from aifand import Actuator, Device, Sensor
 
 
 class TestDevice:

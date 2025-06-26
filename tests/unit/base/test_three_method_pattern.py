@@ -1,7 +1,6 @@
 """Tests for the three-method pattern implementation."""
 
-from src.aifand.base.process import Controller, Environment, Process
-from src.aifand.base.state import State, States
+from aifand import Controller, Environment, Process, State, States
 
 
 class TestThreeMethodPattern:

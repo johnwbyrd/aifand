@@ -8,10 +8,7 @@ developed.
 
 from pydantic import Field
 
-from src.aifand.base.pipeline import Pipeline
-from src.aifand.base.process import Controller, Environment, Process
-from src.aifand.base.state import States
-from src.aifand.base.system import System
+from aifand import Controller, Environment, Pipeline, Process, States, System
 
 
 class MockEnvironment(Environment):
