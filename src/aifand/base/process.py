@@ -11,7 +11,7 @@ THIS MEANS YOU, CLAUDE!
 
 import logging
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
 
 from pydantic import ConfigDict, Field
@@ -108,11 +108,14 @@ class Process(Entity, ABC):
             # The re-raise preserves original exception and stack trace
             raise
 
-    @abstractmethod
     def _execute(self, states: dict[str, State]) -> dict[str, State]:
-        """Execute this process, transforming the input states.
+        """Execute this process using three-method pattern.
 
-        Subclasses implement this method instead of execute().
+        Default implementation calls the three-method pattern:
+        _import_state() → _think() → _export_state()
+
+        This can be overridden by subclasses that need custom execution
+        flow, while maintaining backward compatibility.
 
         Args:
             states: Dictionary of named states (e.g., "actual",
@@ -126,6 +129,57 @@ class Process(Entity, ABC):
             copies.
 
         """
+        # Three-method pattern execution
+        self._import_state(states)
+        result = self._think(states)
+        return self._export_state(result, states)
+
+    def _import_state(self, states: dict[str, State]) -> None:
+        """Import and process input states into internal representation.
+
+        Default implementation does nothing (pass-through).
+        Stateful processes override this to update internal memory.
+        AI processes override this for State → tensor conversion.
+
+        Args:
+            states: Dictionary of named input states
+
+        """
+
+    def _think(self, states: dict[str, State]) -> dict[str, State]:
+        """Core computation logic on transformed states.
+
+        Default implementation passes states through unchanged.
+        All processes typically override this for their core logic.
+
+        Args:
+            states: Dictionary of named states to process
+
+        Returns:
+            Dictionary of transformed states
+
+        """
+        return states
+
+    def _export_state(
+        self,
+        result: dict[str, State],
+        original: dict[str, State],  # noqa: ARG002
+    ) -> dict[str, State]:
+        """Export internal representation back to standard State format.
+
+        Default implementation returns result unchanged (pass-through).
+        AI processes override this for tensor → State conversion.
+
+        Args:
+            result: Result from _think() method
+            original: Original input states for reference
+
+        Returns:
+            Dictionary of final output states
+
+        """
+        return result
 
     def get_time(self) -> int:
         """Get current time in nanoseconds.
@@ -200,14 +254,13 @@ class Environment(Process, ABC):
 
     Environments interface with the physical or simulated world, reading
     sensor values and applying actuator settings. They can read and
-    modify
-    sensors in their output state, but should only read actuators from
-    their input state.
-    """
+    modify sensors in their output state, but should only read actuators
+    from their input state.
 
-    @abstractmethod
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
-        """Environment-specific state transformation implementation."""
+    Environment implementations typically override _think() for core
+    logic, and may override _import_state() and _export_state() for
+    format conversion.
+    """
 
 
 class Controller(Process, ABC):
@@ -215,11 +268,10 @@ class Controller(Process, ABC):
 
     Controllers implement decision-making logic that determines actuator
     settings based on sensor readings. They can read and modify
-    actuators
-    in their output state, but should only read sensors from their input
-    state.
-    """
+    actuators in their output state, but should only read sensors from
+    their input state.
 
-    @abstractmethod
-    def _execute(self, states: dict[str, State]) -> dict[str, State]:
-        """Controller-specific state transformation implementation."""
+    Controller implementations typically override _think() for core
+    logic, and may override _import_state() and _export_state() for
+    format conversion.
+    """

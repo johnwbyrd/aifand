@@ -28,11 +28,185 @@ A `State` represents a snapshot of device properties at a specific moment, imple
 
 The `Process` class represents computational units that transform thermal management data. Process provides a template method `execute()` that calls `_execute()` and automatically updates execution count. The default `_execute()` implementation uses a three-method pattern: `_import_state()`, `_think()`, and `_export_state()`, enabling both stateless and stateful process implementations through selective method overriding.
 
-Process execution follows the pattern: input states → `_import_state()` → `_think()` → `_export_state()` → output states. Stateless processes override only `_think()` for computation. Stateful processes override `_import_state()` to update internal memory and `_think()` to use historical data. Advanced processes override all three methods for custom data format conversion (State ↔ numpy/tensorflow).
+Process execution follows the pattern: input states → `_import_state()` → `_think()` → `_export_state()` → output states. The three-method pattern enables complete format flexibility through instance state management.
 
 Process includes timing infrastructure with `interval_ns` field for execution intervals, `start_time` for timing loop initialization, `execution_count` for tracking completed cycles, and `get_next_execution_time()` method for calculating when next execution should occur using modulo timing. The timing system uses nanosecond precision with `get_time()` method that automatically uses runner-provided time sources when available, falling back to `time.monotonic_ns()`.
 
 Process execution characteristics include immutable data flow where input states are never modified, error resilience where exceptions are caught and logged without aborting thermal control, per-process logging with hierarchical logger names, and progressive complexity through the three-method pattern.
+
+### Three-Method Pattern and Instance State Management
+
+The three-method pattern enables complete flexibility in data format conversion and algorithm implementation while maintaining clean external interfaces. The pattern separates data format concerns from computation logic through instance state management.
+
+**Method Signatures and Responsibilities:**
+
+```python
+def _import_state(self, states: dict[str, State]) -> None:
+    """Convert external format to internal working format"""
+    
+def _think(self) -> None:
+    """Core computation using internal format"""
+    
+def _export_state(self) -> dict[str, State]:
+    """Convert internal results back to external format"""
+```
+
+**Instance State Management Principles:**
+
+The Process base class provides pure orchestration without state storage. Each concrete process implementation manages its own instance variables for communication between the three methods. Instance state serves as the communication medium within a single execution cycle, but can persist longer when algorithms need historical context.
+
+**State Persistence and Format Flexibility:**
+
+Instance state duration and format are completely determined by algorithm requirements:
+
+- **Ephemeral state**: Simple controllers store `dict[str, State]` only during current execution cycle
+- **Historical accumulation**: Controllers needing past data accumulate information across many execution cycles
+- **Native format storage**: AI controllers convert States to tensors/arrays and maintain datasets in optimal computational formats
+- **Hybrid approaches**: Processes can combine multiple storage strategies (e.g., Buffer for historical States plus tensor cache for computation)
+
+**Format Conversion Boundaries:**
+
+The three-method pattern creates clean boundaries between external standardization and internal optimization:
+
+- `_import_state()` handles State → native format conversion and updates internal memory
+- `_think()` operates purely in native format without external interface concerns
+- `_export_state()` handles native format → State conversion for external consumption
+
+**Implementation Patterns by Algorithm Type:**
+
+**Simple Stateless Controllers:**
+```python
+def _import_state(self, states: dict[str, State]) -> None:
+    self._current_states = states  # Store for current cycle only
+
+def _think(self) -> None:
+    # Read from self._current_states, compute, store in self._result_states
+    self._result_states = self._compute_from_current()
+
+def _export_state(self) -> dict[str, State]:
+    return self._result_states  # Return computed results
+```
+
+**Historical Analysis Controllers (using StatefulProcess):**
+```python
+def _import_state(self, states: dict[str, State]) -> None:
+    super()._import_state(states)  # Updates Buffer with timestamped states
+    self._current_states = states  # Also store for immediate access
+
+def _think(self) -> None:
+    # Access both current states and historical Buffer data
+    history = self.buffer.get_recent(duration_ns)
+    self._result_states = self._compute_with_history(self._current_states, history)
+```
+
+**AI/ML Controllers (custom format conversion):**
+```python
+def _import_state(self, states: dict[str, State]) -> None:
+    # Convert States to tensors and accumulate training data
+    tensor_data = self._states_to_tensors(states)
+    self._tensor_dataset.append(tensor_data)
+    self._current_tensors = tensor_data
+
+def _think(self) -> None:
+    # Pure tensor computation with accumulated dataset
+    self._result_tensors = self._neural_network.predict(self._current_tensors)
+
+def _export_state(self) -> dict[str, State]:
+    # Convert tensor results back to States
+    return self._tensors_to_states(self._result_tensors)
+```
+
+**Critical Design Insights:**
+
+The three-method pattern solves the fundamental tension between external interface standardization and internal computational efficiency. External processes always receive consistent `dict[str, State]` interfaces, while internal implementations can optimize data structures and algorithms without constraint.
+
+This architecture supports simple fixed controllers, PID controllers with historical analysis, and AI systems with tensor computation within the same process pipeline framework.
+
+The pattern also enforces clear separation of concerns: format conversion logic lives in import/export methods, while computational logic remains pure and focused in the think method. This separation simplifies testing, debugging, and algorithm development.
+
+**Compositional Design: Choosing Process Components**
+
+Controllers are composed from Process base components based on their specific requirements. The architecture provides a compositional approach where developers select the minimal set of capabilities needed for their algorithm.
+
+**Component Selection Decision Tree:**
+
+**Process Only** - For algorithms requiring custom state management:
+- Custom AI controllers with tensorflow/pytorch models
+- Controllers with specialized data structures (circular buffers, trees, graphs)
+- Algorithms needing non-State storage formats (raw numpy arrays, custom objects)
+- When StatefulProcess's Buffer and auto-pruning would be overhead
+
+```python
+class CustomAIController(Controller):  # Process via Controller
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._tensor_cache = None
+        self._model = self._load_neural_network()
+```
+
+**Process + StatefulProcess** - For algorithms needing historical State analysis:
+- PID controllers requiring error history for derivative/integral terms
+- Safety controllers monitoring temperature trends over time
+- Learning controllers accumulating training examples from States
+- Any algorithm where Buffer's timestamped State storage is optimal
+
+```python
+class PIDController(Controller, StatefulProcess):  # Gets Buffer automatically
+    # Buffer provides timestamped (timestamp_ns, dict[str, State]) storage
+    # Auto-pruning by age and size limit
+    # Efficient time-based queries (get_recent, get_range)
+```
+
+**Process + StatefulProcess + Buffer Customization** - For specialized temporal requirements:
+- Controllers needing custom Buffer behavior (different pruning strategies)
+- Algorithms requiring specific Buffer sizes or retention policies
+- Systems with unusual temporal access patterns
+
+```python
+class SpecializedController(Controller, StatefulProcess):
+    buffer_size_limit: int = Field(default=10000)  # Custom size
+    max_age_ns: int = Field(default=3600_000_000_000)  # 1 hour retention
+```
+
+**Component Interaction Patterns:**
+
+**Process Base Provides:**
+- Three-method pattern orchestration
+- Timing infrastructure and execution counting
+- Error resilience and logging
+- Permission system integration
+
+**StatefulProcess Adds:**
+- Automatic Buffer creation and management
+- Auto-pruning by size and age limits
+- Configuration-driven retention policies
+- Integration with three-method pattern (_import_state updates Buffer)
+
+**Buffer Provides:**
+- Timestamped State storage with nanosecond precision
+- Time-based queries (recent history, arbitrary ranges)
+- Chronological ordering and efficient access
+- Memory management through pruning
+
+**When NOT to Use StatefulProcess:**
+
+StatefulProcess is unnecessary overhead when:
+- Algorithm needs no historical data (simple fixed controllers)
+- Custom storage format is more efficient than timestamped States
+- Memory constraints require specialized data structures
+- Real-time requirements demand zero-allocation algorithms
+
+**When NOT to Use Buffer:**
+
+Even with StatefulProcess, Buffer might not be optimal when:
+- Algorithm needs continuous tensor/array accumulation
+- Custom temporal indexing is required (spatial relationships, non-time keys)
+- Storage backend integration requires different data structures
+- Performance profiling shows Buffer operations as bottlenecks
+
+**Compositional Benefits:**
+
+This compositional approach prevents feature bloat by allowing controllers to select exactly the capabilities they need. Simple controllers remain lightweight, while complex algorithms can use the full infrastructure. The three-method pattern works consistently across all compositions regardless of internal complexity.
 
 Device modification permissions enforce thermal management domain rules through runtime validation. Environment processes can read and modify Sensors but can only read Actuators from their input state (hardware interface responsibility), while Controller processes can only modify Actuators but can only read Sensors from their input state (decision-making responsibility). This separation prevents Controllers from corrupting sensor readings and prevents Environments from bypassing controller decisions. Permission checking uses call stack inspection to identify the modifying process and validates against a class-based permission matrix.
 
