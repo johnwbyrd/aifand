@@ -63,19 +63,19 @@ class Pipeline(Collection):
                 return child
         return None
 
-    def initialize_timing(self) -> None:
-        """Initialize timing state for pipeline and all children.
+    def initialize(self) -> None:
+        """Initialize state for pipeline and all children.
 
-        Propagates timing initialization to all child processes to
-        ensure the entire process tree has clean timing state before
+        Propagates initialization to all child processes to
+        ensure the entire process tree has clean state before
         execution.
         """
-        # Initialize our own timing
-        super().initialize_timing()
+        # Initialize our own state
+        super().initialize()
 
         # Initialize all children
         for child in self.children:
-            child.initialize_timing()
+            child.initialize()
 
     def _execute(self, states: dict[str, State]) -> dict[str, State]:
         """Execute child processes serially.

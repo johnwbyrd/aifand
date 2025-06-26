@@ -174,11 +174,11 @@ class Process(Entity, ABC):
         """
         return self.start_time + (self.execution_count * self.interval_ns)
 
-    def initialize_timing(self) -> None:
-        """Initialize timing state for execution.
+    def initialize(self) -> None:
+        """Initialize all state needed for process execution.
 
         Sets up timing control fields for this process.
-        Can be called by parent processes to initialize child timing
+        Can be called by parent processes to initialize child
         state before execution begins.
         """
         self.start_time = self.get_time()

@@ -107,19 +107,19 @@ class System(Collection):
         earliest_process = self.process_heap[0][1]
         return earliest_process.get_next_execution_time()
 
-    def initialize_timing(self) -> None:
-        """Initialize timing state for system and all children.
+    def initialize(self) -> None:
+        """Initialize state for system and all children.
 
-        Propagates timing initialization to all child processes in
+        Propagates initialization to all child processes in
         the priority queue to ensure the entire process tree has clean
-        timing state before execution.
+        state before execution.
         """
-        # Initialize our own timing
-        super().initialize_timing()
+        # Initialize our own state
+        super().initialize()
 
         # Initialize all children in priority queue
         for _, process in self.process_heap:
-            process.initialize_timing()
+            process.initialize()
 
     def _get_ready_children(self) -> list[Process]:
         """Get children that are ready to execute based on timing.

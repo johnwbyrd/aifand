@@ -109,8 +109,8 @@ class Runner(Entity, ABC):
 
         self._logger.info("Starting runner %s", self.name)
 
-        # Initialize timing state for entire process tree
-        self.main_process.initialize_timing()
+        # Initialize state for entire process tree
+        self.main_process.initialize()
 
         # Start execution thread
         self._stop_requested = False
@@ -301,8 +301,8 @@ class FastRunner(Runner):
         self._start_time = 0
         TimeSource.set_current(self)
 
-        # Initialize timing (will use simulation time source)
-        self.main_process.initialize_timing()
+        # Initialize state (will use simulation time source)
+        self.main_process.initialize()
 
         try:
             end_time = self._simulation_time + int(

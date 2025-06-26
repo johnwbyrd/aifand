@@ -267,7 +267,7 @@ class TestRunnerIntegration:
         assert len(proc.execution_timestamps) >= 1
 
     def test_runner_process_initialization(self) -> None:
-        """Test initialize_timing() propagation.
+        """Test timing() propagation.
 
         Tests propagation through entire process tree.
         """

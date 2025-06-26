@@ -30,7 +30,7 @@ class TestSystemParallelCoordination:
         system.append(proc3)
 
         # Initialize timing
-        system.initialize_timing()
+        system.timing()
 
         # Get ready children - should return in timing order
         # (earliest first)
@@ -67,7 +67,7 @@ class TestSystemParallelCoordination:
 
         system.append(fast_proc)
         system.append(slow_proc)
-        system.initialize_timing()
+        system.timing()
 
         # Execute once - both should be ready initially
         system.execute({})
@@ -91,7 +91,7 @@ class TestSystemParallelCoordination:
             name="test_proc", interval_ns=50_000_000
         )  # 50ms
         system.append(proc)
-        system.initialize_timing()
+        system.timing()
 
         initial_heap_size = len(system.process_heap)
 
@@ -126,7 +126,7 @@ class TestSystemParallelCoordination:
 
         system.append(future_proc)
         system.append(current_proc)
-        system.initialize_timing()
+        system.timing()
 
         # Get ready children immediately
         ready = system._get_ready_children()
@@ -148,7 +148,7 @@ class TestSystemParallelCoordination:
 
         system.append(proc1)
         system.append(proc2)
-        system.initialize_timing()
+        system.timing()
 
         # Execute system with non-empty states
         input_states = {"actual": State(), "desired": State()}
@@ -214,7 +214,7 @@ class TestSystemParallelCoordination:
         system.append(proc1)
         system.append(proc2)
         system.append(proc3)
-        system.initialize_timing()
+        system.timing()
 
         # Execute system
         system.execute({})

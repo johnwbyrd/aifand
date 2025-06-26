@@ -42,7 +42,7 @@ The `Collection` class defines the coordination protocol for managing multiple p
 
 Collection uses duck typing and specifies no internal container type. Any object that can store processes, determine execution timing, and coordinate execution is a valid Collection implementation. Collections are coordination abstractions containing no data structures themselves, just the protocol for managing processes.
 
-Collection inherits timing capabilities from Process, allowing Collections to participate in hierarchical timing coordination while implementing their own storage and execution strategies. Collections propagate `initialize_timing()` to all child processes to ensure clean timing state throughout the process hierarchy.
+Collection inherits timing capabilities from Process, allowing Collections to participate in hierarchical timing coordination while implementing their own storage and execution strategies. Collections propagate `initialize()` to all child processes to ensure clean state throughout the process hierarchy.
 
 ### Pipeline
 
@@ -121,7 +121,7 @@ classDiagram
         +interval_ns: int
         +get_next_execution_time() int
         +get_time() int
-        +initialize_timing() None
+        +initialize() None
         +update_execution_count() None
     }
     class Collection {
