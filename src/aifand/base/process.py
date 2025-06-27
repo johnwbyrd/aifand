@@ -77,7 +77,9 @@ class Process(Entity, ABC):
         super().__init__(**data)
         # Create a logger specific to this process instance
         self._logger = logging.getLogger(
-            f"{self.__class__.__module__}.{self.__class__.__name__}.{self.name}"
+            f"{self.__class__.__module__}."
+            f"{self.__class__.__name__}."
+            f"{self.name}"
         )
 
     def execute(self, states: States) -> States:
