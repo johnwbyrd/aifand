@@ -26,8 +26,7 @@ This project values careful planning, objective analysis, and precise technical 
 
 READ EVERY SINGLE FILE LISTED ABOVE BEFORE RESPONDING TO THE USER.
 
-This is not optional. Use the Read tool on each file individually. Do not proceed 
-with any conversation until you have read the follwing:
+This is not optional. Use the Read tool on each file individually. Do not proceed with any conversation until you have read the following:
 
 - Everything in doc/
 - All *.py files in src/
@@ -35,6 +34,6 @@ with any conversation until you have read the follwing:
 - pyproject.toml
 - README.md
 
-This step is extremely important.  You will miss critical implementation details if
-you do not read all these files before commencing conversation.  Do not prioritize
-efficiency over reading these files.
+This step is extremely important.  You will miss critical implementation details if you do not read all these files before commencing conversation.  Do not prioritize efficiency over reading these files.
+
+After making any major change, run `hatch run tests` to verify that your changes are correct.

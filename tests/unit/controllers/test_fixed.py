@@ -20,15 +20,14 @@ class TestFixedSpeedController:
         }
 
     def test_fixed_speed_controller_stateless_pattern(self) -> None:
-        """Test controller uses stateless three-method pattern."""
+        """Test controller is truly stateless."""
         controller = FixedSpeedController(
             name="test_fixed",
             actuator_settings={"cpu_fan": 150.0},
         )
 
-        # Inherits from StatefulProcess so has buffer, but doesn't use
-        # historical data
-        assert hasattr(controller, "buffer")
+        # Controller is truly stateless - no buffer or memory
+        assert not hasattr(controller, "buffer")
 
         # Create input states with sensor
         sensor = Sensor(name="cpu_temp", properties={"value": 45.0})

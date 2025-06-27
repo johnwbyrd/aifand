@@ -1,19 +1,16 @@
 """Fixed-value controller for constant thermal output."""
 
-from typing import Any
-
 from pydantic import Field
 
-from aifand import Actuator, Controller, State, StatefulProcess, States
+from aifand import Actuator, Controller, State, States
 
 
-class FixedSpeedController(Controller, StatefulProcess):
+class FixedSpeedController(Controller):
     """Controller that applies fixed values to actuators.
 
-    FixedSpeedController demonstrates the simplest three-method pattern
-    usage, overriding only _think() to apply configured fixed values to
-    actuators. This controller is stateless and requires no memory or
-    historical data.
+    FixedSpeedController is a simple stateless controller that applies
+    configured fixed values to actuators. This controller requires no
+    memory or historical data.
 
     The controller applies fixed actuator settings from configuration,
     making it useful for testing, debugging, and scenarios where
@@ -25,32 +22,17 @@ class FixedSpeedController(Controller, StatefulProcess):
         description="Dictionary mapping actuator names to fixed values",
     )
 
-    def __init__(self, **data: Any) -> None:
-        """Initialize FixedSpeedController with instance state vars."""
-        super().__init__(**data)
-        # Instance variables for three-method pattern communication
-        self._actual_states: States | None = None
-        self._desired_states: States | None = None
-
-    def _import_state(self, states: States) -> None:
-        """Store input states for _think() method access.
+    def _execute(self, states: States) -> States:
+        """Apply fixed actuator values to states.
 
         Args:
             states: Dictionary of named input states
-        """
-        super()._import_state(states)  # Update Buffer (though unused)
-        self._actual_states = States(states)
-        self._desired_states = States(states)  # Start with input states
 
-    def _think(self) -> None:
-        """Apply fixed actuator values to states.
-
-        Demonstrates stateless pattern by overriding only _think().
-        Creates or updates actuators with fixed values from
-        configuration and stores them in desired state.
+        Returns:
+            Dictionary containing desired state with actuator commands
         """
-        if not self._actual_states or not self._desired_states:
-            return
+        # Start with a copy of input states
+        result_states = States(states)
 
         # Apply fixed settings to actuators in desired state
         for actuator_name, fixed_value in self.actuator_settings.items():
@@ -61,19 +43,11 @@ class FixedSpeedController(Controller, StatefulProcess):
             )
 
             # Add actuator to desired state (create if doesn't exist)
-            if "desired" not in self._desired_states:
-                self._desired_states["desired"] = State()
+            if "desired" not in result_states:
+                result_states["desired"] = State()
 
-            self._desired_states["desired"] = self._desired_states[
-                "desired"
-            ].with_device(actuator)
+            result_states["desired"] = result_states["desired"].with_device(
+                actuator
+            )
 
-    def _export_state(self) -> States:
-        """Export the calculated states with desired actuator values.
-
-        Returns:
-            Dictionary containing desired state with actuator commands
-        """
-        return (
-            States(self._desired_states) if self._desired_states else States()
-        )
+        return result_states
