@@ -12,37 +12,87 @@
 
 **NOTE: This project is currently in the architectural design and development phase. It is not yet ready for deployment or production use.**
 
-## Project Purpose and Goals
+## What Is aifand?
 
-`aifand` is a Python module and daemon for managing thermal environments.
+`aifand` is a next-generation thermal management system that automatically learns your hardware's thermal behavior and adapts control strategies accordingly. Unlike traditional fan controllers that require manual configuration and use fixed curves, aifand discovers your system's thermal characteristics and optimizes cooling in real-time.
 
-aifand uses classical and AI algorithms to achieve maximal cooling efficiency, for your own definition of "maximal".  You can choose from either classical algorithms such as PID and envelope-based temperature controls, or you can try the novel AI algorithms that learn your temperature environment over time.
+The system serves three distinct purposes:
+- **Local thermal control** with zero-configuration automatic discovery and AI-powered adaptation
+- **Distributed thermal management** across networks for data centers and multi-machine environments  
+- **Experimental platform** for thermal control research across scales from embedded systems to HVAC
 
-Real-world temperature enviroments are complex, non-linear, and can be hard to model in software.  `aifand` is designed to be a forward-thinking class library, permitting multiple generations of AI experiments to determine the "best" cooling algorithms over a variety of environments.  It comes with a number of simulations, that allow you to test your controller algorithms against likely as well as pessimal thermal environment models.
+## What Makes aifand Different
 
-### Key Goals:
+Traditional fan control tools require you to manually map sensors to fans, define temperature curves, and tune PID parameters for each system. They operate reactively, responding to temperature changes after they occur, and work only on single machines.
 
--   **Automatic Discovery**: Eliminate the need for users to manually configure thermal zones, map sensors to fans, or define control curves. `aifand` will discover the system's cooling devices and temperature sensors automatically.
--   **Intelligent Control**: Utilize machine learning techniques (specifically, Echo State Networks) to learn the unique thermal relationships within a system. This allows `aifand` to predict how changes in fan speed will affect temperatures, leading to more efficient and stable cooling.
--   **Safety and Reliability**: Implement a robust, layered safety model to prevent overheating and ensure that hardware is always protected, even while the system is learning or encountering unexpected conditions.
--   **Extensibility**: Design a modular, composable architecture that allows developers to easily extend the system with new controllers, support new hardware, or even create complex, hierarchical control systems for multi-machine environments like data centers.
--   **Efficiency**: Optimize cooling to be "just right," avoiding the common issue of fans running at maximum speed unnecessarily, thereby reducing noise and power consumption.
+aifand takes a fundamentally different approach:
+
+**Automatic Discovery**: No configuration files, no manual sensor mapping. aifand discovers your cooling hardware automatically and learns how it affects temperatures.
+
+**Predictive AI Control**: Using Echo State Networks and other machine learning techniques, aifand learns your system's unique thermal relationships and predicts how control changes will affect temperatures before making adjustments.
+
+**Distributed Architecture**: Built from the ground up for network operation. Monitor and control thermal systems across multiple machines, data centers, or cloud environments through a unified interface.
+
+**Experimental Platform**: Unlike monolithic fan control applications, aifand is designed as a composable class library that enables thermal experimentation across vastly different scales - from small embedded computers to large HVAC systems with strongly non-linear thermal behavior. The modular architecture allows researchers and engineers to experiment with different control strategies to optimize for their specific goals: minimizing cost, reducing noise, maximizing efficiency, or ensuring safety under extreme conditions.
+
+**Safety-First Design**: Layered safety systems ensure your hardware stays protected even while the system is learning or experimenting with new control strategies.
+
+## Key Features
+
+- **Zero Configuration**: Automatic hardware discovery eliminates manual setup
+- **AI-Powered Learning**: System learns optimal control strategies for your specific hardware
+- **Network Distributed**: Control thermal systems across multiple machines and networks
+- **Multi-Algorithm Support**: Classical controllers (PID, fixed curves) and AI algorithms (Echo State Networks, neural networks)
+- **Multi-Scale Experimentation**: Test thermal control strategies across different system scales and optimize for cost, noise, efficiency, or safety
+- **Safety Guarantees**: Multiple safety layers prevent overheating during learning or experimentation
+
+## Quick Start
+
+*Note: This is a preview of the planned interface - the system is still in development*
+
+```python
+from aifand import System, Hardware, EchoStateNetworkController
+
+# Automatic hardware discovery and AI control
+system = System([
+    Hardware(),  # Auto-discovers sensors and actuators
+    EchoStateNetworkController()  # Learns optimal control
+])
+
+# Run with safety monitoring
+system.run()
+```
+
+For distributed operation:
+```python
+# Monitor remote systems
+remote_system = System.connect("thermal-server.local:8080")
+print(f"Remote CPU temp: {remote_system.get_sensor('cpu_temp').value}°C")
+```
 
 ## Development
 
 ### Running Tests
 
 ```bash
-pytest tests/ -v --cov=src/aifand --cov-report=term-missing
+hatch run tests
 ```
 
-### Code Quality Checks
+This runs the complete test suite including unit tests, integration tests, and thermal simulation validation.
 
-Run all quality checks (linting, type checking, tests, security scans):
+### Code Quality
+
+All quality checks (linting, type checking, security scans):
 
 ```bash
 hatch run check
 ```
 
-This mirrors the same checks run in CI/CD.
+## Documentation
 
+- [Architecture Documentation](doc/architecture.md) - Detailed system design and object model
+- [Implementation Roadmap](doc/todo.md) - Current development status and planned features
+
+## License
+
+AGPL-3.0-or-later. See LICENSE file for details.
