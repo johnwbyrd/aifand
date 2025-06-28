@@ -13,27 +13,12 @@ Implement the three-method pattern in Process base class and create first concre
 
 ### Tasks
 
-1. **Implement Three-Method Pattern** (src/aifand/base/process.py):
-   - Add default `_execute()` implementing: `_import_state()` → `_think()` → `_export_state()`
-   - All three methods default to pass-through behavior
-   - Maintain backward compatibility for existing `_execute()` overrides
-
-2. **Implement StatefulProcess** (src/aifand/base/stateful.py):
-   - Extend Process with state management capabilities
-   - Separate configuration (pydantic fields) from runtime state (instance attributes)
-   - Override `initialize()` to set up runtime state from configuration
-
-3. **Implement Buffer** (src/aifand/base/buffer.py):
-   - Timestamped state storage with nanosecond precision
-   - Methods: `store()`, `get_recent()`, `get_range()`, `prune_before()`
-   - Efficient circular buffer implementation for memory management
-
-4. **Implement FixedSpeedController** (src/aifand/controllers/fixed.py):
+1. **Implement FixedSpeedController** (src/aifand/controllers/fixed.py):
    - Demonstrate stateless pattern (override only `_think()`)
    - Apply fixed actuator values from configuration
    - Validate first concrete example of three-method pattern
 
-5. **Enhanced Permission Testing** (tests/unit/base/test_permissions.py):
+2. **Enhanced Permission Testing** (tests/unit/base/test_permissions.py):
    - Real Pipeline permission flow with FixedSpeedController
    - Hierarchical permission validation through System → Pipeline → Process
    - Integration testing with concrete controller implementations

@@ -78,14 +78,8 @@ print(f"Remote CPU temp: {remote_system.get_sensor('cpu_temp').value}°C")
 hatch run tests
 ```
 
-This runs the complete test suite including unit tests, integration tests, and thermal simulation validation.
+This runs the complete test suite including unit tests, code quality checks, integration tests, and thermal simulation validation.
 
-### Code Quality
-
-All quality checks (linting, type checking, security scans):
-
-```bash
-hatch run check
 ```
 
 ## Documentation
