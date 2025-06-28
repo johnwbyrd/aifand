@@ -240,24 +240,35 @@ class Process(Entity, ABC):
 class Environment(Process, ABC):
     """Abstract base class for environment interfaces.
 
-    Environments interface with the physical or simulated world, reading
-    sensor values and applying actuator settings. They can read and
-    modify sensors in their output state, but should only read actuators
-    from their input state.
+    Environments interface with, and represent, input from the physical
+    or simulated world. Environments read physical or virtual Sensors
+    and apply them to Sensor objects.  They may also create Actuators
+    that represent the actual or virtual state of those actuators, but
+    they cannot modify the actuators' values; only a controller can do
+    that.
 
-    Environment implementations typically override _think() for core
-    logic, and may override _import_state() and _export_state() for
-    format conversion.
+    An Environment can create, read and modify Sensors. However, an
+    Environment should only be able to create or copy Actuators from
+    their practical or virtual state.
     """
 
 
 class Controller(Process, ABC):
     """Abstract base class for control logic.
 
-    Controllers implement decision-making logic that determines actuator
-    settings based on sensor readings. They can read and modify
-    actuators in their output state, but should only read sensors from
-    their input state.
+    Controllers represent an attempt to modify a controllable, such as
+    a real or virtual Actuator. A Controller implements decision-making
+    logic that determines actuator settings, based on current, previous,
+    and predicted Sensor readings.
+
+    A Controller can read Sensors, and it can modify Actuators.  It
+    can't create or copy Sensors or Actuators, as those are created
+    by the Environment.
+
+    As a general guideline, one Controller should be responsible for
+    only one bit of control logic. It's possible to chain together
+    multiple Controllers to implement complex control logic, in
+    the form of a Pipeline.
 
     Controller implementations typically override _think() for core
     logic, and may override _import_state() and _export_state() for

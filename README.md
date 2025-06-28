@@ -14,7 +14,11 @@
 
 ## Project Purpose and Goals
 
-`aifand` is an intelligent, adaptive thermal management system for Linux-based computers. The primary goal of this project is to create a "zero-configuration" fan controller that automatically learns the thermal characteristics of a system and adjusts cooling devices to maintain optimal temperatures without requiring any manual setup.
+`aifand` is a Python module and daemon for managing thermal environments.
+
+aifand uses classical and AI algorithms to achieve maximal cooling efficiency, for your own definition of "maximal".  You can choose from either classical algorithms such as PID and envelope-based temperature controls, or you can try the novel AI algorithms that learn your temperature environment over time.
+
+Real-world temperature enviroments are complex, non-linear, and can be hard to model in software.  `aifand` is designed to be a forward-thinking class library, permitting multiple generations of AI experiments to determine the "best" cooling algorithms over a variety of environments.  It comes with a number of simulations, that allow you to test your controller algorithms against likely as well as pessimal thermal environment models.
 
 ### Key Goals:
 
@@ -23,12 +27,6 @@
 -   **Safety and Reliability**: Implement a robust, layered safety model to prevent overheating and ensure that hardware is always protected, even while the system is learning or encountering unexpected conditions.
 -   **Extensibility**: Design a modular, composable architecture that allows developers to easily extend the system with new controllers, support new hardware, or even create complex, hierarchical control systems for multi-machine environments like data centers.
 -   **Efficiency**: Optimize cooling to be "just right," avoiding the common issue of fans running at maximum speed unnecessarily, thereby reducing noise and power consumption.
-
-## Current Status
-
-The project is actively under development. The core architecture has been designed, focusing on a pipeline of composable `Stage`s (`Controllers` and `Environments`) managed by a central `System` orchestrator.
-
-We are currently in the process of implementing the foundational classes and testing frameworks.
 
 ## Development
 
