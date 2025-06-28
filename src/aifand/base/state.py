@@ -121,6 +121,32 @@ class State(BaseModel):
                     return frame_locals["self"]
         return None
 
+    def get_sensors(self) -> dict[str, Sensor]:
+        """Get all sensor devices in this state.
+
+        Returns:
+            Dictionary mapping device names to Sensor objects.
+        """
+        # Filter devices to only Sensors using dictionary comprehension
+        return {
+            device_name: device
+            for device_name, device in self.devices.items()
+            if isinstance(device, Sensor)
+        }
+
+    def get_actuators(self) -> dict[str, Actuator]:
+        """Get all actuator devices in this state.
+
+        Returns:
+            Dictionary mapping device names to Actuator objects.
+        """
+        # Filter devices to only Actuators using dict comprehension
+        return {
+            device_name: device
+            for device_name, device in self.devices.items()
+            if isinstance(device, Actuator)
+        }
+
     def __repr__(self) -> str:
         """Return string representation with device info.
 
@@ -143,21 +169,3 @@ class States(dict[str, State]):
         """Provide pydantic core schema for States."""
         # Use dict schema since States inherits from dict
         return handler(dict[str, State])
-
-    def get_sensors(self) -> dict[str, Sensor]:
-        """Get all sensor devices across all states."""
-        return {
-            device_name: device
-            for state in self.values()
-            for device_name, device in state.devices.items()
-            if isinstance(device, Sensor)
-        }
-
-    def get_actuators(self) -> dict[str, Actuator]:
-        """Get all actuator devices across all states."""
-        return {
-            device_name: device
-            for state in self.values()
-            for device_name, device in state.devices.items()
-            if isinstance(device, Actuator)
-        }

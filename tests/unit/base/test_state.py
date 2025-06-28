@@ -190,3 +190,83 @@ class TestState:
 
         # Different device sets should not be equal
         assert state1 != state3
+
+    def test_state_get_sensors(self) -> None:
+        """Test getting sensors from a state."""
+        temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
+        voltage_sensor = Sensor(name="voltage", properties={"value": 12.0})
+        fan_actuator = Actuator(name="cpu_fan", properties={"value": 128})
+
+        state = State(
+            devices={
+                "cpu_temp": temp_sensor,
+                "voltage": voltage_sensor,
+                "cpu_fan": fan_actuator,
+            }
+        )
+
+        sensors = state.get_sensors()
+
+        assert len(sensors) == 2
+        assert "cpu_temp" in sensors
+        assert "voltage" in sensors
+        assert "cpu_fan" not in sensors
+        assert sensors["cpu_temp"] == temp_sensor
+        assert sensors["voltage"] == voltage_sensor
+
+    def test_state_get_actuators(self) -> None:
+        """Test getting actuators from a state."""
+        temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
+        fan_actuator = Actuator(name="cpu_fan", properties={"value": 128})
+        thermal_actuator = Actuator(
+            name="thermal_limit", properties={"value": 85}
+        )
+
+        state = State(
+            devices={
+                "cpu_temp": temp_sensor,
+                "cpu_fan": fan_actuator,
+                "thermal_limit": thermal_actuator,
+            }
+        )
+
+        actuators = state.get_actuators()
+
+        assert len(actuators) == 2
+        assert "cpu_fan" in actuators
+        assert "thermal_limit" in actuators
+        assert "cpu_temp" not in actuators
+        assert actuators["cpu_fan"] == fan_actuator
+        assert actuators["thermal_limit"] == thermal_actuator
+
+    def test_state_get_sensors_empty(self) -> None:
+        """Test getting sensors from a state with no sensors."""
+        fan_actuator = Actuator(name="cpu_fan", properties={"value": 128})
+        state = State(devices={"cpu_fan": fan_actuator})
+
+        sensors = state.get_sensors()
+
+        assert len(sensors) == 0
+        assert sensors == {}
+
+    def test_state_get_actuators_empty(self) -> None:
+        """Test getting actuators from a state with no actuators."""
+        temp_sensor = Sensor(name="cpu_temp", properties={"value": 45.0})
+        state = State(devices={"cpu_temp": temp_sensor})
+
+        actuators = state.get_actuators()
+
+        assert len(actuators) == 0
+        assert actuators == {}
+
+    def test_state_get_sensors_and_actuators_empty_state(self) -> None:
+        """Test getting sensors and actuators from an empty state."""
+        state = State()
+
+        sensors = state.get_sensors()
+        actuators = state.get_actuators()
+
+        assert len(sensors) == 0
+        assert len(actuators) == 0
+        assert sensors == {}
+        assert actuators == {}
