@@ -1,6 +1,6 @@
 """Tests for the three-method pattern implementation."""
 
-from aifand import Controller, Environment, Process, State, States
+from aifand import Controller, Process, State, States
 
 
 class TestThreeMethodPattern:
@@ -119,29 +119,3 @@ class TestThreeMethodPattern:
         assert process.custom_executed
         assert "custom" in result
         assert "actual" not in result  # Custom implementation replaced input
-
-    def test_environment_inherits_pattern(self) -> None:
-        """Test Environment inherits three-method pattern correctly."""
-
-        class TestEnvironment(Environment):
-            def __init__(self, name: str) -> None:
-                super().__init__(name=name)
-                self.env_executed = False
-                self._env_states: States | None = None
-
-            def _import_state(self, states: States) -> None:
-                self._env_states = states
-
-            def _think(self) -> None:
-                # Environment logic
-                self.env_executed = True
-
-            def _export_state(self) -> States:
-                return self._env_states or States()
-
-        env = TestEnvironment(name="test_env")
-
-        result = env.execute(States({"actual": State()}))
-
-        assert env.env_executed
-        assert result == States({"actual": State()})

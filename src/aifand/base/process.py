@@ -11,13 +11,16 @@ THIS MEANS YOU, CLAUDE!
 
 import logging
 import time
-from abc import ABC
-from typing import Any
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any
 
 from pydantic import ConfigDict, Field
 
 from aifand.base.entity import Entity
 from aifand.base.state import States
+
+if TYPE_CHECKING:
+    from aifand.base.state import State
 
 
 class Process(Entity, ABC):
@@ -240,17 +243,73 @@ class Process(Entity, ABC):
 class Environment(Process, ABC):
     """Abstract base class for environment interfaces.
 
-    Environments interface with, and represent, input from the physical
-    or simulated world. Environments read physical or virtual Sensors
-    and apply them to Sensor objects.  They may also create Actuators
-    that represent the actual or virtual state of those actuators, but
-    they cannot modify the actuators' values; only a controller can do
-    that.
+    Environments interface with the physical or simulated world using
+    a position-dependent execution pattern:
 
-    An Environment can create, read and modify Sensors. However, an
-    Environment should only be able to create or copy Actuators from
-    their practical or virtual state.
+    - Pipeline start (no input): Read sensors, create initial states
+    - Pipeline middle/end (has input): Apply control, pass through
+
+    This pattern avoids redundant sensor reading while ensuring control
+    decisions reach hardware. The same Environment instance can serve
+    as both sensor source and actuator sink.
+
+    Permission rules:
+    - Can create, read, and modify Sensors
+    - Can read Actuators from input states
+    - Can write Actuator values to hardware
+    - Cannot modify Actuator values in states (only Controllers do that)
     """
+
+    def _execute(self, states: States) -> States:
+        """Execute position-dependent environment operations.
+
+        Args:
+            states: Input states from pipeline (empty if at start)
+
+        Returns:
+            Fresh states if at start, or passed-through states if not
+
+        """
+        if not states:
+            # Pipeline start - create fresh states from world
+            actual = self._read_sensors()
+            result = States({"actual": actual})
+            # Initialize desired as copy of actual for initial control
+            # Copy only actuators to desired state (not sensors)
+            from typing import cast
+
+            from aifand.base.device import Actuator, Device
+            from aifand.base.state import State
+
+            desired_devices = {
+                name: cast("Device", device)  # Actuator inherits Device
+                for name, device in actual.devices.items()
+                if isinstance(device, Actuator)
+            }
+            result["desired"] = State(devices=desired_devices)
+            return result
+        # Pipeline middle/end - apply control and pass through
+        if "desired" in states:
+            self._write_actuators(states["desired"])
+        return states
+
+    @abstractmethod
+    def _read_sensors(self) -> "State":
+        """Read current sensor values from the world.
+
+        Returns:
+            State containing current sensor and actuator readings
+
+        """
+
+    @abstractmethod
+    def _write_actuators(self, desired: "State") -> None:
+        """Write actuator values to the world.
+
+        Args:
+            desired: State containing target actuator values to write
+
+        """
 
 
 class Controller(Process, ABC):

@@ -6,20 +6,36 @@ They will be replaced by real implementations as the system is
 developed.
 """
 
+from typing import TYPE_CHECKING
+
 from pydantic import Field
 
 from aifand import Controller, Environment, Pipeline, Process, States, System
+
+if TYPE_CHECKING:
+    from aifand import State
 
 
 class MockEnvironment(Environment):
     """Basic Environment mock for testing."""
 
-    def _execute(self, states: States) -> States:
-        """Pass states through unchanged.
+    def _read_sensors(self) -> "State":
+        """Mock sensor reading - returns empty state.
 
-        Default implementation for testing.
+        Override in test subclasses to provide specific sensor data.
         """
-        return states
+        from aifand import State
+
+        return State()
+
+    def _write_actuators(self, desired: "State") -> None:
+        """Mock actuator writing - does nothing.
+
+        Override this in test subclasses to verify actuator commands.
+
+        Args:
+            desired: Target actuator state to write (unused in mock)
+        """
 
 
 class MockController(Controller):

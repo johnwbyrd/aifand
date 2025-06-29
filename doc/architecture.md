@@ -255,13 +255,18 @@ The specialization layer defines process types with specific roles in thermal ma
 
 ### Environment
 
-The `Environment` class extends Process to interface with the physical or simulated world through a position-independent execution pattern. Unlike other processes that may behave differently based on their position in a pipeline, Environments consistently perform three operations regardless of placement:
+The `Environment` class extends Process to interface with the physical or simulated world through a position-dependent execution pattern. Environments perform different operations based on whether they receive input states:
 
+**At pipeline start (no input states)**:
 1. **Read sensors**: Query the physical or simulated world to create fresh "actual" state
-2. **Preserve pipeline data**: Pass through all input states while updating "actual"
-3. **Write actuators**: Apply "desired" state to the world (if present)
+2. **Initialize control**: Create initial "desired" state as copy of "actual"
+3. **Return both states**: Pass fresh states downstream for controllers
 
-This position-independent behavior simplifies system composition. An Environment works correctly whether placed at the beginning of a pipeline (creating initial states), in the middle (updating sensor readings), at the end (applying control decisions), or used standalone (complete read-write cycle).
+**At pipeline middle/end (has input states)**:
+1. **Apply control**: Write "desired" state to the world (if present)
+2. **Pass through**: Return input states unchanged
+
+This pattern avoids redundant sensor reading while ensuring control decisions are applied to hardware. The same Environment instance can serve as both sensor source and actuator sink within a single pipeline.
 
 Permission rules for Environments:
 - Can create, read, and modify Sensors
@@ -406,27 +411,22 @@ class SafetyController(Controller, StatefulProcess):
 
 ### HwmonEnvironment
 
-Demonstrates position-independent Environment pattern:
+Demonstrates position-dependent Environment pattern:
 
 ```python
 class HwmonEnvironment(Environment):
     def _execute(self, states: States) -> States:
-        # Always read current hardware state
-        actual = self._read_hwmon_sensors()
-        
-        # Preserve input states, update actual
-        result = States(states) if states else States()
-        result["actual"] = actual
-        
-        # Create initial desired if missing
-        if "desired" not in result:
+        if not states:
+            # Pipeline start - create fresh states
+            actual = self._read_hwmon_sensors()
+            result = States({"actual": actual})
             result["desired"] = State(devices=actual.devices.copy())
-        
-        # Apply desired state to hardware
-        if "desired" in result:
-            self._write_hwmon_actuators(result["desired"])
-        
-        return result
+            return result
+        else:
+            # Pipeline middle/end - apply control and pass through
+            if "desired" in states:
+                self._write_hwmon_actuators(states["desired"])
+            return states
 ```
 
 ### EchoStateNetworkController
@@ -450,7 +450,7 @@ class EchoStateNetworkController(Controller):
 
 ### System Composition Examples
 
-Position-independent Environments enable simple system composition:
+Position-dependent Environments enable efficient system composition:
 
 ```python
 # Read-only monitoring
@@ -462,9 +462,9 @@ Pipeline([
 
 # Closed-loop control
 Pipeline([
-    HwmonEnvironment(),    # Reads sensors, applies previous desired
-    PIDController(),       # Computes new desired
-    # Same HwmonEnvironment instance applies new desired next cycle
+    HwmonEnvironment(),    # Reads sensors (pipeline start)
+    PIDController(),       # Computes desired state
+    HwmonEnvironment(),    # Applies desired state (pipeline end)
 ])
 
 # Multi-zone control
