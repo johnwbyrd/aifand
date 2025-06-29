@@ -255,14 +255,23 @@ The specialization layer defines process types with specific roles in thermal ma
 
 ### Environment
 
-The `Environment` class extends Process to interface with and represent input from the physical or simulated world. Environments read physical or virtual sensors and apply their values to Sensor objects.
+The `Environment` class extends Process to interface with the physical or simulated world through a position-independent execution pattern. Unlike other processes that may behave differently based on their position in a pipeline, Environments consistently perform three operations regardless of placement:
+
+1. **Read sensors**: Query the physical or simulated world to create fresh "actual" state
+2. **Preserve pipeline data**: Pass through all input states while updating "actual"
+3. **Write actuators**: Apply "desired" state to the world (if present)
+
+This position-independent behavior simplifies system composition. An Environment works correctly whether placed at the beginning of a pipeline (creating initial states), in the middle (updating sensor readings), at the end (applying control decisions), or used standalone (complete read-write cycle).
 
 Permission rules for Environments:
 - Can create, read, and modify Sensors
-- Can create or copy Actuators from their physical/virtual state
-- Cannot modify Actuator values (only Controllers can do that)
+- Can read Actuators from input state
+- Cannot modify Actuator values in states (only Controllers can do that)
+- Can write Actuator values to the physical/simulated world
 
-This ensures Environments accurately represent the real world without interfering with control decisions. Examples include Hardware (interfaces with Linux hwmon) and various Simulation environments for testing.
+The distinction between modifying actuator values in states versus writing them to hardware is crucial: Environments translate between the abstract State representation and the concrete world, but only Controllers make control decisions.
+
+Examples include HwmonEnvironment (Linux hardware interface), SimulationEnvironment (physics models), ReplayEnvironment (recorded data playback), and NetworkEnvironment (remote hardware access).
 
 ### Controller
 
@@ -395,6 +404,31 @@ class SafetyController(Controller, StatefulProcess):
             self._output = self._emergency_cooling()
 ```
 
+### HwmonEnvironment
+
+Demonstrates position-independent Environment pattern:
+
+```python
+class HwmonEnvironment(Environment):
+    def _execute(self, states: States) -> States:
+        # Always read current hardware state
+        actual = self._read_hwmon_sensors()
+        
+        # Preserve input states, update actual
+        result = States(states) if states else States()
+        result["actual"] = actual
+        
+        # Create initial desired if missing
+        if "desired" not in result:
+            result["desired"] = State(devices=actual.devices.copy())
+        
+        # Apply desired state to hardware
+        if "desired" in result:
+            self._write_hwmon_actuators(result["desired"])
+        
+        return result
+```
+
 ### EchoStateNetworkController
 
 AI controller with complete format conversion:
@@ -412,6 +446,38 @@ class EchoStateNetworkController(Controller):
     def _export_state(self) -> States:
         # Convert predictions back to States
         return {"desired": self._numpy_to_states(self._predictions)}
+```
+
+### System Composition Examples
+
+Position-independent Environments enable simple system composition:
+
+```python
+# Read-only monitoring
+Pipeline([
+    HwmonEnvironment(),    # Creates actual state
+    SafetyController(),    # Monitors temperatures
+    LoggingEnvironment()   # Records to database
+])
+
+# Closed-loop control
+Pipeline([
+    HwmonEnvironment(),    # Reads sensors, applies previous desired
+    PIDController(),       # Computes new desired
+    # Same HwmonEnvironment instance applies new desired next cycle
+])
+
+# Multi-zone control
+System([
+    Pipeline([
+        HwmonEnvironment(cpu_zone=True),
+        CPUController()
+    ]),
+    Pipeline([
+        HwmonEnvironment(gpu_zone=True), 
+        GPUController()
+    ])
+])
 ```
 
 These examples show how the layered architecture supports different complexity levels within the same framework.
